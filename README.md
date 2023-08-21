@@ -1,2 +1,2 @@
-# dqsd-piecewise-poly
+# ∆QSD piecewise poly
 A piecewise polynomial implementation of `dqsd-classes`
