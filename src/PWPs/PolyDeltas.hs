@@ -31,7 +31,9 @@ import PWPs.ConvolutionClasses
 import PWPs.SimplePolynomials as SP
 
 {- |
-Represents either a polynomial or a shifted dirac delta. A dirac delta contains the point at which it lies.
+Represents either a polynomial or a shifted dirac delta. A dirac delta contains the "size"; this is
+for probabilistic choice (and as such, it should be constrained between 0 and 1). Its position is
+stored as its basepoint when doing piecewise operations.
 -} 
 data PolyDelta a = P (Poly a) | D a
     deriving (Eq, Show)
@@ -57,7 +59,7 @@ minusPD = fmap negate
 
 scalePD :: Num a => a -> PolyDelta a -> PolyDelta a
 scalePD x (P a) = P (SP.scale x a)
-scalePD _ (D y) = D y
+scalePD x (D y) = D (x * y)
 
 evaluatePD :: Num a => a -> PolyDelta a -> a
 evaluatePD point (P x) = SP.evaluatePoly point x
@@ -107,18 +109,10 @@ argument (whichever it is) along by this amount. Need to ensure there is still a
 convolvePolyDeltas (lf, uf, P f) (lg, ug, P g) = 
     if (uf < lf) || (ug < lg) then error "Negative interval width"
                               else aggregate $ map (\(x, p) -> (x, P p)) (convolvePolys (lf, uf, f) (lg, ug, g))
-
-convolvePolyDeltas (lf, uf, D f) (lg, ug, P g) 
+convolvePolyDeltas (lf, uf, D f) (lg, ug, g) 
     | lf /= uf     = error "Non-zero delta interval"
-    | lf /= f      = error "Malformed delta"
     | ug < lg      = error "Negative interval width"
-    | f == 0       = [(lg, P g)] -- convolving with a zero-sized delta gives nothing
-    | lg + lf == 0 = [(0, P g), (ug, P zero)] -- degenerate case
-    | otherwise    = aggregate [(0, P zero), (lg + lf, P g), (ug + lf, P zero)]
-convolvePolyDeltas (lf, uf, P f) (lg, ug, D g) = convolvePolyDeltas (lg, ug, D g) (lf, uf, P f)
-
-convolvePolyDeltas (lf, uf, D f) (lg, ug, D g)
-    | lf /= uf || lg /= ug = error "Non-zero delta interval"
-    | lf /= f  || lg /= g  = error "Mismatched delta basepoint"
-    | f + g == 0           = [(0, D 0)]
-    | otherwise            = [(0, P 0), (f+g, D $ f+g), (f+g, P 0)]
+    | f == 0       = [(0, P zero)] -- convolving with a zero-sized delta gives nothing
+    | lg + lf == 0 = [(0, scalePD f g), (ug, P zero)] -- degenerate case
+    | otherwise    = aggregate [(0, P zero), (lg + lf, scalePD f g), (ug + lf, P zero)]
+convolvePolyDeltas (lf, uf, f) (lg, ug, D g) = convolvePolyDeltas (lg, ug, D g) (lf, uf, f)  -- commutative
