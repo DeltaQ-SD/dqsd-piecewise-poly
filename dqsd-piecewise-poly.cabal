@@ -58,7 +58,8 @@ library
     import:           warnings
 
     -- Modules exported by the library.
-    exposed-modules:  PWPs
+    exposed-modules:  DeltaQ.PWPs
+                    , PWPs.IRVs
                     , PWPs.Piecewise
                     , PWPs.PolyDeltas
                     , PWPs.SimplePolynomials
@@ -71,7 +72,7 @@ library
     -- other-extensions:
 
     -- Other library packages from which modules are imported.
-    build-depends:    base ^>=4.16.4.0
+    build-depends:    base
                     , dqsd-classes
 
     -- Directories containing source files.
@@ -104,5 +105,5 @@ test-suite dqsd-piecewise-poly-test
 
     -- Test dependencies.
     build-depends:
-        base ^>=4.16.4.0,
+        base,
         dqsd-piecewise-poly
