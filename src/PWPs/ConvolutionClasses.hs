@@ -29,8 +29,16 @@ class Calculable a where
     differentiate :: a -> a
     integrate :: a -> a
 
+class Evaluable a b where
+    evaluate :: a -> b -> a -- evaluate b at point a
+    boost :: a -> b -> b    -- increment b by a
+    scale :: a -> b -> b    -- scale b by a
+
+{- |
+    Convolution in our library is over finite intervals - this is what piecewiseness needs
+-}
 class Calculable a => Convolvable a where
-    (<+>) :: a -> a -> a -- convolution
+    (<+>) :: a -> a -> a  -- convolution
 
 {- |
     Laws:

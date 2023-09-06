@@ -128,22 +128,24 @@ makePieces xs
     | otherwise                          = Pieces (map makePiece xs)
 
 -- | Use the applicative instance to construct the calculable instance.
-instance (Num a, Enum a, Ord a, Fractional a) => Calculable (Pieces a (PolyDelta a))
+instance (Num a, Eq a, Ord a, Calculable b, Evaluable a b) => Calculable (Pieces a b)
     where
         plus x y        = plus <$> x <*> y
         times x y       = times <$> x <*> y
         minus x         = minus <$> x
-        zero            = Pieces [Piece {basepoint = 0 :: a, object = P PWPs.SimplePolynomials.zero :: PolyDelta a}]
+        zero            = Pieces [Piece {basepoint = 0 :: a, object = zero :: b}]
         fromInteger n   = Pieces [Piece {basepoint = 0 :: a, object = PWPs.ConvolutionClasses.fromInteger n}]
         differentiate   = differentiatePieces
         integrate       = integratePieces
  
+ {-
 instance (Num a, Enum a, Ord a, Fractional a) => Convolvable (Pieces a (PolyDelta a))
     where
         (<+>)           = convolvePieces
+-}
 
 -- | Piecewise differentiation is easy: just differentiate all the objects
-differentiatePieces :: (Enum a, Eq a, Fractional a, Num a) => Pieces a (PolyDelta a) -> Pieces a (PolyDelta a)
+differentiatePieces :: (Num a, Eq a, Ord a, Calculable b) => Pieces a b -> Pieces a b
 differentiatePieces = fmap differentiate
 
 {- |
@@ -151,35 +153,28 @@ Piecewise integration is harder - need to evaluate at the boundary points to mak
 We need to pass the integrated object to the next interation so that it can be evaluated on the basepoint
 and to recognise deltas and pass them through as well as evaluating them
 -}
-integratePieces :: (Enum a, Num a, Eq a, Fractional a) => Pieces a (PolyDelta a) -> Pieces a (PolyDelta a)
-integratePieces ps = Pieces (goInt 0 (zero :: (Enum a, Num a, Eq a, Fractional a) => PolyDelta a) (getPieces ps))
+integratePieces :: (Num a, Eq a, Ord a, Calculable b, Evaluable a b) => Pieces a b -> Pieces a b
+integratePieces ps = Pieces (goInt 0 (disaggregate (getPieces ps)))
     where
-        goInt :: (Enum a, Num a, Eq a, Fractional a) => a -> PolyDelta a -> [Piece a (PolyDelta a)] -> [Piece a (PolyDelta a)]
-        goInt _ _ [] = [] -- stop when the list of pieces is empty 
-        {- we receive the previous object and evaluate it at the basepoint, and then add a constant term so that our
-           final integrated piece evaluates to the same value at the basepoint.
-           When we have a delta we have to add this to the final value of the previous object, and also pass
-           through the delta itself.
+        goInt :: (Num a, Eq a, Ord a, Calculable b, Evaluable a b) => a -> [(a, a, b)] -> [Piece a b]
+        goInt _ [] = [] -- stop when the list of pieces is empty 
+        {- 
+           We evaluate each integrated object at the initial and final points of the interval.
+           We receive the integrated value from the end of the previous interval, and adjust the integrated object so
+           that its initial value matches this.
+           We add the new object to the ouput list and pass on the received integated value plus the evaluated integral
+           at the end of the interval.
         -}
-        goInt oldOffset previousObject (x:xs) = case object x of
-            P px -> integratedPiece : goInt 0 finalObject xs -- integrating a polynomial
-                where
-                    bp               = basepoint x
-                    basepointValue   = evaluatePD bp previousObject -- the integral at the end of the previous interval
-                    integratedObject = integrate (P px)    
-                    newValue         = evaluatePD bp integratedObject
-                    makeObject y     = P (makePoly y)
-                    finalObject      = integratedObject `plus` makeObject (oldOffset + basepointValue - newValue) -- correct the constant
-                    integratedPiece  = makePiece (bp, finalObject)
-            D dx -> x : goInt newOffset (D dx) xs  -- deltas integrate to themselves
-                where
-                    bp               = basepoint x
-                    basepointValue   = evaluatePD bp previousObject -- the integral at the end of the previous interval
-                    newOffset = case previousObject of
-                        D _ -> error "Successive delta functions"
-                        P _ -> basepointValue -- addition of the delta value will occur in next iteration
+        goInt previousIntegral ((fp,lp,x):xs) = integratedPiece : goInt newIntegral xs
+            where
+                integratedObject = integrate x    
+                basepointValue   = evaluate fp integratedObject -- the integral at the start of the current interval
+                finalValue       = evaluate lp integratedObject -- the integral at the end of the current interval
+                offset           = previousIntegral - basepointValue
+                integratedPiece  = makePiece (fp, boost offset integratedObject) -- correct the constant
+                newIntegral      = finalValue + offset
 
-evaluateAtApoint :: (Num a, Ord a) => a -> Pieces a (PolyDelta a) -> a
+evaluateAtApoint :: (Num a, Ord a, Evaluable a b) => a -> Pieces a b -> a
 {- |
 To evaluate at a point we need to find the interval the point is in and then evaluate the corresponding object
 i.e. find i s.t. basepoint(i) <= p < basepoint(i+1).
@@ -192,19 +187,19 @@ evaluateAtApoint point as = if point < basepoint (head (getPieces as))
         goEval _ []         = error "Empty piece list"
         goEval _ [_]        = piecesFinalValue as
         goEval p (x1:x2:xs) = if (basepoint x1 <= p) && (p < basepoint x2) 
-                                then evaluatePD p (object x1) 
+                                then evaluate p (object x1) 
                                 else goEval p (x2:xs)
 
 -- | Find the value of the ultimate object at the last basepoint
-piecesFinalValue :: Num a => Pieces a (PolyDelta a) -> a
+piecesFinalValue :: (Num a, Evaluable a b) => Pieces a b -> a
 piecesFinalValue (Pieces []) = error "Empty piece list"
-piecesFinalValue (Pieces xs) = evaluatePD (basepoint (last xs)) (object (last xs))
+piecesFinalValue (Pieces xs) = evaluate (basepoint (last xs)) (object (last xs))
 
 {- |
 Piecwise convolution requires convolving the pieces pairwise and then summing the results,
 i.e. convolve every piece with every other piece and combine the results.
 -}
-convolvePieces :: (Ord a, Enum a, Fractional a) => Pieces a (PolyDelta a) -> Pieces a (PolyDelta a) -> Pieces a (PolyDelta a)
+convolvePieces :: (Ord a, Num a, Calculable a, Evaluable a b) => Pieces a b -> Pieces a b -> Pieces a b
 convolvePieces (Pieces []) _ = error "Empty piece list"
 convolvePieces _ (Pieces []) = error "Empty piece list"
 convolvePieces as bs = foldr plus zero [Pieces (map makePiece (convolvePolyDeltas a b)) | a <- das, b <- dbs]
@@ -217,8 +212,8 @@ disaggregate [] = error "Empty piece list"
 disaggregate [_] = [] -- ignore the last piece
 disaggregate (x:xs@(x':_)) = (basepoint x, basepoint x', object x) : disaggregate xs
 
-(><) :: (Eq a, Num a) => a -> Pieces a (PolyDelta a) -> Pieces a (PolyDelta a)
+(><) :: (Eq a, Num a, Evaluable a b) => a -> Pieces a b -> Pieces a b
 -- | multiply by a constant piecewise
 infix 7 ><
-x >< y = fmap (scalePD x) y
+(><) = fmap . scale
 

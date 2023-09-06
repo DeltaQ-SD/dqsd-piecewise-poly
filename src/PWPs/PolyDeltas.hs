@@ -58,7 +58,7 @@ minusPD :: Num a => PolyDelta a -> PolyDelta a
 minusPD = fmap negate
 
 scalePD :: Num a => a -> PolyDelta a -> PolyDelta a
-scalePD x (P a) = P (SP.scale x a)
+scalePD x (P a) = P (SP.scalePoly x a)
 scalePD x (D y) = D (x * y)
 
 evaluatePD :: Num a => a -> PolyDelta a -> a
