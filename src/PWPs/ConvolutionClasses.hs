@@ -17,6 +17,7 @@ module PWPs.ConvolutionClasses
 (
     Calculable (..)
   , Convolvable (..)
+  , Evaluable (..)
 )
 where
 
