@@ -47,9 +47,7 @@ module PWPs.Piecewise
     , monotonic
 ) where
 
-import PWPs.SimplePolynomials hiding (scale, plus, times, minus, integrate, differentiate, evaluatePoly)
-import PWPs.ConvolutionClasses 
-import PWPs.PolyDeltas
+import PWPs.ConvolutionClasses
 
 data Piece a o = Piece
     {
@@ -137,12 +135,6 @@ instance (Num a, Eq a, Ord a, Calculable b, Evaluable a b) => Calculable (Pieces
         fromInteger n   = Pieces [Piece {basepoint = 0 :: a, object = PWPs.ConvolutionClasses.fromInteger n}]
         differentiate   = differentiatePieces
         integrate       = integratePieces
- 
- {-
-instance (Num a, Enum a, Ord a, Fractional a) => Convolvable (Pieces a (PolyDelta a))
-    where
-        (<+>)           = convolvePieces
--}
 
 -- | Piecewise differentiation is easy: just differentiate all the objects
 differentiatePieces :: (Num a, Eq a, Ord a, Calculable b) => Pieces a b -> Pieces a b
@@ -199,10 +191,11 @@ piecesFinalValue (Pieces xs) = evaluate (basepoint (last xs)) (object (last xs))
 Piecwise convolution requires convolving the pieces pairwise and then summing the results,
 i.e. convolve every piece with every other piece and combine the results.
 -}
-convolvePieces :: (Ord a, Num a, Calculable a, Evaluable a b) => Pieces a b -> Pieces a b -> Pieces a b
-convolvePieces (Pieces []) _ = error "Empty piece list"
-convolvePieces _ (Pieces []) = error "Empty piece list"
-convolvePieces as bs = foldr plus zero [Pieces (map makePiece (convolvePolyDeltas a b)) | a <- das, b <- dbs]
+(<+>) :: (Ord a, Enum a, Fractional a, Calculable b, Evaluable a b, CompactConvolvable a b) => Pieces a b -> Pieces a b -> Pieces a b
+infix 7 <+>
+(<+>) (Pieces []) _ = error "Empty piece list"
+(<+>) _ (Pieces []) = error "Empty piece list"
+(<+>) as bs = foldr plus zero [Pieces (map makePiece (convolveIntervals a b)) | a <- das, b <- dbs]
     where das = disaggregate (getPieces as)
           dbs = disaggregate (getPieces bs)
 

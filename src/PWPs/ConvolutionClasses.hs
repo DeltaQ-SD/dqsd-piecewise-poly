@@ -16,8 +16,8 @@ We also want a convolution operator that behaves correctly.
 module PWPs.ConvolutionClasses
 (
     Calculable (..)
-  , Convolvable (..)
   , Evaluable (..)
+  , CompactConvolvable (..)
 )
 where
 
@@ -38,8 +38,8 @@ class Evaluable a b where
 {- |
     Convolution in our library is over finite intervals - this is what piecewiseness needs
 -}
-class Calculable a => Convolvable a where
-    (<+>) :: a -> a -> a  -- convolution
+class CompactConvolvable a b where
+    convolveIntervals :: (a, a, b) -> (a, a, b) -> [(a, b)]  -- convolution
 
 {- |
     Laws:

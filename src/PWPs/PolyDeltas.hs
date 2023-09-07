@@ -116,3 +116,7 @@ convolvePolyDeltas (lf, uf, D f) (lg, ug, g)
     | lg + lf == 0 = [(0, scalePD f g), (ug, P zero)] -- degenerate case
     | otherwise    = aggregate [(0, P zero), (lg + lf, scalePD f g), (ug + lf, P zero)]
 convolvePolyDeltas (lf, uf, f) (lg, ug, D g) = convolvePolyDeltas (lg, ug, D g) (lf, uf, f)  -- commutative
+
+instance (Num a, Fractional a, Ord a) => CompactConvolvable a (PolyDelta a)
+    where
+        convolveIntervals = convolvePolyDeltas
