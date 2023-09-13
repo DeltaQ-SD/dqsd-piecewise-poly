@@ -9,19 +9,17 @@ License     : BSD-2-Clause
 Maintainer  : peter.thompson@pnsol.com
 Stability   : experimental
 
-We consider 'objects' (in this case polynomials or deltas)
-defined over numerical intervals, where we know how to combine objects
+We consider 'objects' (which may be polynomials or deltas) defined over numerical intervals, 
+assumed to be in increasing order, where we know how to combine objects
 when the intervals are identical. When the intervals are not identical we construct the
 overlaps so as to produce a combined object over a more complex shared set of intervals.
 
 We assume the sets of intervals have a common initial point, otherwise we could not combine
 them over the left-hanging piece. Note this means a piecewise list is never empty.
 
-Each set of intervals is assumed to be in increasing order.
-
 We allow for zero-width intervals in order to accomodate delta functions. A zero-width
-interval may *only* contain a delta, and *must* be followed by a non-zero interval.
-A non-zero-width interval may *not* contain a delta.
+interval should *only* contain a delta, and *must* be followed by a non-zero interval.
+A non-zero-width interval should *not* contain a delta.
 
 When combining piecewise objects we allow that one set of intervals may finish before the other, 
 and assume that whatever the operation is will simply reproduce the tail of the longer sequence.
@@ -42,8 +40,6 @@ module PWPs.Piecewise
     , (<+>)
     , piecesFinalValue
     , evaluateAtApoint
-    , convolvePieces
-    , disaggregate
     , monotonic
 ) where
 
