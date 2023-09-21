@@ -89,7 +89,6 @@ combinePieces f g = Pieces (doCombine (getPieces f) (getPieces g))
             where bx = basepoint x
                   by0 = basepoint $ head ys
             
-            
             --if basepoint (head ys) == basepoint x then map ((fmap . object) x) ys 
               --              else error "Initial points not coincident"
         -- now we know that both lists have at least two elements
@@ -182,6 +181,12 @@ evaluateAtApoint point as = if point < basepoint (head (getPieces as))
 piecesFinalValue :: (Num a, Evaluable a b) => Pieces a b -> a
 piecesFinalValue (Pieces []) = error "Empty piece list"
 piecesFinalValue (Pieces xs) = evaluate (basepoint (last xs)) (object (last xs))
+
+instance (Num a, Eq a, Ord a, Evaluable a b) => Evaluable a (Pieces a b) 
+    where
+        evaluate = evaluateAtApoint
+        boost    = fmap . boost
+        scale    = (><)
 
 {- |
 Piecwise convolution requires convolving the pieces pairwise and then summing the results,
