@@ -33,6 +33,7 @@ module PWPs.IRVs
   , firstToFinish
   , allToFinish
   , probChoice
+  , multiWeightedChoice
   , (PWPs.IRVs.<+>)
   , probMass
   , displayCDF
@@ -165,6 +166,14 @@ probChoice (wx, x) (wy, y) =
         where
             xprob = wx/(wx + wy)
             yprob = wy/(wx + wy)
+
+multiWeightedChoice :: (Ord a, Enum a, Eq a, Fractional a, Num a) => [(a, IRV a)] -> IRV a
+-- we'll force everything into PDFs and deliver a PDF
+multiWeightedChoice xs = PDF (foldr plus zero (zipWith adjust weights pdfs))
+    where
+        weights = map fst xs                -- :: [a]
+        pdfs    = map (makePDF . snd) xs    -- :: [Distribution a]
+        adjust x y = (x / sum weights) >< y
 
 -- | To convolve, force into PDFs and then invoke piecewise convolution
 infix 7 <+> -- same as *
