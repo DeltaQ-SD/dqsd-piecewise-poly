@@ -41,7 +41,7 @@ where
 
 import PWPs.Piecewise
 import PWPs.PolyDeltas
-import PWPs.SimplePolynomials (makePoly)
+import PWPs.SimplePolynomials (Poly (..), makePoly)
 
 type Distribution a = Pieces a (PolyDelta a)
 
@@ -75,26 +75,47 @@ constructDelta x
 zeroPoly :: (Ord a, Enum a, Eq a, Fractional a, Num a) => IRV a
 zeroPoly = PDF (makePieces [(0, P $ makePoly 0)])
 
+monotonicFromZero :: (Ord a, Num a) => [a] -> Bool
+monotonicFromZero xs = if null xs then error "Empty list" else head xs == 0 && monotonic xs
+
 constructCDF :: (Ord a, Enum a, Eq a, Fractional a, Num a) => [(a, a)] -> IRV a
 -- | Construct a CDF from a list of values, treating each new value as a step up from the one before, assuming we start at 0
+-- | First interval is a zero polynomial: subsequent intervals start with a delta and then have a constant polynomial.
 constructCDF xs 
-    | head xs /= (0,0)              = error "CDF fails to start at origin"
-    | not (monotonic basepoints)    = error "Basepoints not monotonic"
-    | not (monotonic probabilities) = error "Probabilities not monotonic"
-    | last probabilities > 1        = error "Probability exceeds one"
-    -- First interval is a zero polynomial: subsequent intervals start with a delta and then
-    -- have a constant polynomial
-    | otherwise = (CDF . makePieces) (interleave treads risers ++ [last treads])
+    | length xs < 2                         = error "Insufficient points"
+    | not (monotonicFromZero basepoints)    = error "Basepoints not monotonic"
+    | not (monotonicFromZero probabilities) = error "Probabilities not monotonic"
+    | last probabilities > 1                = error "Probability exceeds one"
+    | otherwise = (CDF . makePieces) (interleave treads risers)
         where
             basepoints = map fst xs
             probabilities = map snd xs
             -- Each step up corresponds to a delta of the difference with the previous value
             risers = zip (tail basepoints) (map D (zipWith (-) (tail probabilities) probabilities))
-            treads = zip basepoints (map (P . makePoly) probabilities)
+            treads = zip basepoints (map (P . makePoly) probabilities) -- always have one more tread than riser
             interleave :: [b] -> [b] -> [b]
             interleave [] _ = []
+            interleave [x] [] = [x] -- keep the last tread
             interleave _ [] = []
             interleave (x':xs') (y':ys') = x':y':interleave xs' ys'
+
+constructLinearCDF:: (Ord a, Enum a, Eq a, Fractional a, Num a) => [(a, a)] -> IRV a
+-- | Construct a CDF from a list of values, interpolating linearly between each pair of points
+constructLinearCDF xs 
+    | length xs < 2                         = error "Insufficient points"
+    | not (monotonicFromZero basepoints)    = error "Basepoints not monotonic"
+    | not (monotonicFromZero probabilities) = error "Probabilities not monotonic"
+    | 0 `elem` steps                        = error "Zero-width interval"
+    | last probabilities > 1                = error "Probability exceeds one"
+    | otherwise = (CDF . makePieces) (zip basepoints slopes)
+        where
+            basepoints = map fst xs
+            probabilities = map snd xs
+            steps   = zipWith (-) (tail basepoints) basepoints -- width of each interval
+            stepUps = zipWith (-) (tail probabilities) probabilities -- increments in probabilities
+            slopes  = map P (zipWith3 slope probabilities stepUps steps ++ [makePoly (last probabilities)])
+            -- each polynomiakl starts at the current probability and linearly slopes up to the next one
+            slope x y z = Poly [x, y/z]
 
 displayCDF :: (Ord a, Enum a, Eq a, Fractional a, Num a) => Int -> IRV a -> [(a, a)]
 -- | Turn an IRV into a list of point pairs corresponding to the CDF, with a given minimum number of points
