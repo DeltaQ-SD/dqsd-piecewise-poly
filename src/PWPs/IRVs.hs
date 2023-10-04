@@ -27,8 +27,9 @@ module PWPs.IRVs
   , makeCDF
   , constructUniform
   , constructDelta
-  , zeroPoly
+  , zeroPDF
   , constructCDF
+  , constructLinearCDF
   , firstToFinish
   , allToFinish
   , probChoice
@@ -72,8 +73,8 @@ constructDelta x
     | otherwise = PDF (makePieces [(0, P 0), (x, D 1), (x, P 0)])
 
 -- | Polynomial with zero value everywhere
-zeroPoly :: (Ord a, Enum a, Eq a, Fractional a, Num a) => IRV a
-zeroPoly = PDF (makePieces [(0, P $ makePoly 0)])
+zeroPDF :: (Ord a, Enum a, Eq a, Fractional a, Num a) => IRV a
+zeroPDF = PDF (makePieces [(0, P $ makePoly 0)])
 
 monotonicFromZero :: (Ord a, Num a) => [a] -> Bool
 monotonicFromZero xs = if null xs then error "Empty list" else head xs == 0 && monotonic xs

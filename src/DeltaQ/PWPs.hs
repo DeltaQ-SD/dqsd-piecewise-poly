@@ -14,7 +14,7 @@ instance (Ord a, Num a, Enum a, Fractional a) => ImproperRandomVariable (IRV a) 
     uniform0   = constructUniform
     
     perfection = diracDelta 0
-    bottom     = zeroPoly
+    bottom     = zeroPDF
 
     tangibleMass = probMass
 
