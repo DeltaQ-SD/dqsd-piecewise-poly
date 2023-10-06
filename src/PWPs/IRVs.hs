@@ -116,7 +116,7 @@ constructLinearCDF xs
             steps   = zipWith (-) (tail basepoints) basepoints -- width of each interval
             stepUps = zipWith (-) (tail probabilities) probabilities -- increments in probabilities
             slopes  = map P (zipWith3 slope probabilities stepUps steps ++ [makePoly (last probabilities)])
-            -- each polynomiakl starts at the current probability and linearly slopes up to the next one
+            -- each polynomial starts at the current probability and linearly slopes up to the next one
             slope x y z = Poly [x, y/z]
 
 displayCDF :: (Ord a, Enum a, Eq a, Fractional a, Num a) => Int -> IRV a -> [(a, a)]
