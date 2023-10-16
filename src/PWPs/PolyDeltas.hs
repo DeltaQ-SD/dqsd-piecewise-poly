@@ -1,3 +1,5 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-|
 Module      : Deltas
 Description : Polynomials extended with delta functions
@@ -91,6 +93,11 @@ instance (Eq a, Num a, Fractional a) => Calculable (PolyDelta a)
         differentiate    = differentiatePD
         integrate        = integratePD 
 
+instance (Eq a, Num a, Fractional a) => Evaluable a (PolyDelta a) 
+    where
+        evaluate  = evaluatePD
+        boost x y = plusPD y (P (makePoly x))
+        scale     = scalePD
 
 -- | Removes excess basepoints if the objects on either side are the same
 aggregate :: Eq a => [(a, PolyDelta a)] -> [(a, PolyDelta a)]

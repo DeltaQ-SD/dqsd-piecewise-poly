@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 {-|
 Module      : Piecewise
@@ -9,19 +10,17 @@ License     : BSD-2-Clause
 Maintainer  : peter.thompson@pnsol.com
 Stability   : experimental
 
-We consider 'objects' (in this case polynomials or deltas)
-defined over numerical intervals, where we know how to combine objects
+We consider 'objects' (which may be polynomials or deltas) defined over numerical intervals, 
+assumed to be in increasing order, where we know how to combine objects
 when the intervals are identical. When the intervals are not identical we construct the
 overlaps so as to produce a combined object over a more complex shared set of intervals.
 
 We assume the sets of intervals have a common initial point, otherwise we could not combine
 them over the left-hanging piece. Note this means a piecewise list is never empty.
 
-Each set of intervals is assumed to be in increasing order.
-
 We allow for zero-width intervals in order to accomodate delta functions. A zero-width
-interval may *only* contain a delta, and *must* be followed by a non-zero interval.
-A non-zero-width interval may *not* contain a delta.
+interval should *only* contain a delta, and *must* be followed by a non-zero interval.
+A non-zero-width interval should *not* contain a delta.
 
 When combining piecewise objects we allow that one set of intervals may finish before the other, 
 and assume that whatever the operation is will simply reproduce the tail of the longer sequence.
@@ -42,8 +41,6 @@ module PWPs.Piecewise
     , (<+>)
     , piecesFinalValue
     , evaluateAtApoint
-    , convolvePieces
-    , disaggregate
     , monotonic
 ) where
 
@@ -92,7 +89,6 @@ combinePieces f g = Pieces (doCombine (getPieces f) (getPieces g))
             | by0 >  bx = map ((fmap . object) x) (makePiece (bx, object $ head ys):ys)
             where bx = basepoint x
                   by0 = basepoint $ head ys
-            
             
             --if basepoint (head ys) == basepoint x then map ((fmap . object) x) ys 
               --              else error "Initial points not coincident"
@@ -186,6 +182,12 @@ evaluateAtApoint point as = if point < basepoint (head (getPieces as))
 piecesFinalValue :: (Num a, Evaluable a b) => Pieces a b -> a
 piecesFinalValue (Pieces []) = error "Empty piece list"
 piecesFinalValue (Pieces xs) = evaluate (basepoint (last xs)) (object (last xs))
+
+instance (Num a, Eq a, Ord a, Evaluable a b) => Evaluable a (Pieces a b) 
+    where
+        evaluate = evaluateAtApoint
+        boost    = fmap . boost
+        scale    = (><)
 
 {- |
 Piecwise convolution requires convolving the pieces pairwise and then summing the results,
