@@ -113,16 +113,20 @@ When both arguments are polynomials, we use convolvePolys and just map the type.
 For a delta, lower == upper (invariant to be checked), and the effect of the delta is to translate the other
 argument (whichever it is) along by this amount. Need to ensure there is still an initial interval based at zero.
 -} 
-convolvePolyDeltas (lf, uf, P f) (lg, ug, P g) = 
+convolvePolyDeltas (lf, uf, f) (lg, ug, g) =
     if (uf < lf) || (ug < lg) then error "Negative interval width"
-                              else aggregate $ map (\(x, p) -> (x, P p)) (convolvePolys (lf, uf, f) (lg, ug, g))
-convolvePolyDeltas (lf, uf, D f) (lg, ug, g) 
-    | lf /= uf     = error "Non-zero delta interval"
-    | ug < lg      = error "Negative interval width"
-    | f == 0       = [(0, P zero)] -- convolving with a zero-sized delta gives nothing
-    | lg + lf == 0 = [(0, scalePD f g), (ug, P zero)] -- degenerate case
-    | otherwise    = aggregate [(0, P zero), (lg + lf, scalePD f g), (ug + lf, P zero)]
-convolvePolyDeltas (lf, uf, f) (lg, ug, D g) = convolvePolyDeltas (lg, ug, D g) (lf, uf, f)  -- commutative
+    else case (f,g) of
+        -- both objects are polynomials: use convolvePolys 
+        (P f', P g')       -> aggregate $ map (\(x, p) -> (x, P p)) (convolvePolys (lf, uf, f') (lg, ug, g'))
+        -- first object is a delta: shift second basepoint and scale by the size of the delta
+        (D f', g') 
+            | lf /= uf     -> error "Non-zero delta interval"
+            | ug < lg      -> error "Negative interval width"
+            | f == 0       -> [(0, P zero)] -- convolving with a zero-sized delta gives nothing
+            | lg + lf == 0 -> [(0, scalePD f' g'), (ug, P zero)] -- degenerate case
+            | otherwise    -> aggregate [(0, P zero), (lg + lf, scalePD f' g'), (ug + lf, P zero)] 
+        -- second one must be a delta: swap terms and go again
+        _                  -> convolvePolyDeltas (lg, ug, g) (lf, uf, f) 
 
 instance (Num a, Fractional a, Ord a) => CompactConvolvable a (PolyDelta a)
     where
