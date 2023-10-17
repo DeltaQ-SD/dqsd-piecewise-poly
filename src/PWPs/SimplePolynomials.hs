@@ -139,11 +139,18 @@ n `choose` k
     | k >= n     = 1
     | otherwise = (n-1) `choose` (k - 1) + (n-1) `choose` k -- recursive definition
 
+-- remove null intervals
+trimTerms []  = []
+trimTerms [x] = [x]
+trimTerms (x:y:xs) = if fst x == fst y then trimTerms (y:xs) else x:trimTerms (y:xs)
+
 convolvePolys :: (Fractional a, Eq a, Ord a) => (a, a, Poly a) -> (a, a, Poly a) -> [(a, Poly a)]
 -- | Take two polynomials f and g defined on bounded intervals and produce three contiguous pieces as a result
 convolvePolys (lf, uf, Poly fs) (lg, ug, Poly gs) 
     | (lf <0) || (lg < 0) = error "Interval bounds cannot be negative"
-    | (lf >= uf) || (lg >= ug) = error "Invalid interval" -- upper bounds should be strictly greater than lower bounds
+    | (lf > uf) || (lg > ug) = error "Invalid convolution interval" -- upper bounds should be greater than lower bounds
+    | lf == uf = trimTerms [(0, zero), (lf, zero)] -- zero-width interval produces zero polynomial
+    | lg == ug = trimTerms [(0, zero), (lg, zero)] -- zero-width interval produces zero polynomial
     | (ug - lg) > (uf - lf) = convolvePolys (lg, ug, Poly gs) (lf, uf, Poly fs) -- if g is wider than f, swap the terms
     | otherwise = -- we know g is narrower than f 
         let
@@ -172,11 +179,6 @@ convolvePolys (lf, uf, Poly fs) (lg, ug, Poly gs)
             secondTerm = makeTerm (\m n -> innerSum m n (\k -> lg^k - ug^k))
 
             thirdTerm  = makeTerm (\m n k -> makeMonomial (n-k) (uf^(m+k+1)) `plus` minus (innerSum m n (ug ^) k))
-
-            -- remove null intervals
-            trimTerms []  = []
-            trimTerms [x] = [x]
-            trimTerms (x:y:xs) = if fst x == fst y then trimTerms (y:xs) else x:trimTerms (y:xs)
 
         in trimTerms [(0, zero), (lf + lg, firstTerm), (lf + ug, secondTerm), (uf + lg, thirdTerm), (uf + ug, zero)]
 
