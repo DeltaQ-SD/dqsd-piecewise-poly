@@ -204,7 +204,7 @@ infix 7 <+>
 -- | disaggregate takes a Pieces list and produces a list of separate bounded intervals
 disaggregate :: [Piece a o] -> [(a, a, o)]
 disaggregate [] = error "Empty piece list"
-disaggregate [_] = [] -- ignore the last piece
+disaggregate [x] = [(basepoint x, basepoint x, object x)] -- turn the last piece into a null interval
 disaggregate (x:xs@(x':_)) = (basepoint x, basepoint x', object x) : disaggregate xs
 
 (><) :: (Eq a, Num a, Evaluable a b) => a -> Pieces a b -> Pieces a b
