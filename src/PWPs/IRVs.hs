@@ -133,10 +133,9 @@ decomposeIRV numPoints ys = zip basepoints (map (`evaluateAtApoint` ys) basepoin
         pointsList = getPieces ys
         originalBasepoints = map basepoint pointsList
         spacing = last originalBasepoints / Prelude.fromIntegral numPoints
-        basepoints = reverse (makePoints originalBasepoints spacing (head originalBasepoints))
+        basepoints = makePoints originalBasepoints spacing (head originalBasepoints)
         makePoints :: (Ord b, Num b) => [b] -> b -> b -> [b]
         -- make points by repeatedly adding spacing to last interval boundary until it exceeds the next interval boundary
-        -- use : for efficiency and then reverse
         makePoints [] _ _ = [] -- already got the last interval boundary included, no need to go further
         makePoints (y':ys') sp prev = 
             if new >= y' 
