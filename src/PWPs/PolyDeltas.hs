@@ -121,8 +121,7 @@ convolvePolyDeltas (lf, uf, f) (lg, ug, g) =
         -- first object is a delta: shift second basepoint and scale by the size of the delta
         (D f', g') 
             | lf /= uf     -> error "Non-zero delta interval"
-            | ug < lg      -> error "Negative interval width"
-            | f == 0       -> [(0, P zero)] -- convolving with a zero-sized delta gives nothing
+            | f' == 0      -> [(0, P zero)] -- convolving with a zero-sized delta gives nothing
             | lg + lf == 0 -> [(0, scalePD f' g'), (ug, P zero)] -- degenerate case
             | otherwise    -> aggregate [(0, P zero), (lg + lf, scalePD f' g'), (ug + lf, P zero)] 
         -- second one must be a delta: swap terms and go again
