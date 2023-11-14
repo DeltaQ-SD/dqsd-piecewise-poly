@@ -1,4 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-|
 Module      : SimplePolynomials
 Description : Polynomials as lists of coefficients
@@ -25,17 +26,23 @@ module PWPs.SimplePolynomials
     , differentiate
     , evaluatePoly
     , convolvePolys
+    , countPolyRoots
 ) where
 
 import PWPs.ConvolutionClasses
 newtype Poly a = Poly [a]
-    deriving (Eq,Show,Functor)
+    deriving (Eq,Show,Functor,Foldable)
 
 makePoly :: a -> Poly a
 -- | turn a constant into a constant polynomial
 makePoly x = Poly [x] 
 zeroPoly :: Num a => Poly a
 zeroPoly = makePoly 0
+
+degreePoly :: (Num a, Eq a) => Poly a -> Int
+-- a constant polynomial has one coefficient and has degree 0; for Euclidian division we want the 
+-- degree of the zero polynomial to be negative
+degreePoly x = if trimPoly x == zeroPoly then -1 else length (trimPoly x) - 1
 
 trimPoly :: (Num a, Eq a) => Poly a -> Poly a 
 -- | remove top zeroes
@@ -101,7 +108,6 @@ instance (Eq a, Num a) => Num (Poly a) where
     (+)               = addPolys
     (*)               = mulPolys
     negate (Poly a)   = Poly (map negate a)
-    --zero              = zeroPoly
     abs               = undefined
     signum            = undefined
     fromInteger n     = Poly [Prelude.fromInteger n]
@@ -180,3 +186,73 @@ convolvePolys (lf, uf, Poly fs) (lg, ug, Poly gs)
 
         in trimTerms [(0, zero), (lf + lg, firstTerm), (lf + ug, secondTerm), (uf + lg, thirdTerm), (uf + ug, zero)]
 
+{- |
+We use Sturm's Theorem to count the number of roots of a polynomial in a given interval.
+(See https://en.wikipedia.org/wiki/Sturm%27s_theorem)
+Starting from polynomial p, construct the Sturm sequence p0, p1, . . ., where:
+p0 = p
+p1 = p′
+pi+1 = −rem(pi−1, pi) for i > 1
+where p′ is the derivative of p and rem(p, q) is the remainder of the Euclidian division of p by q. 
+The length of this sequence is at most the degree of p. 
+We define V(x) to be the number of sign variations in the sequence of numbers p0(x), p1(x), . . ..
+Sturm’s theorem states that, if p is a square-free polynomial (one without repeated roots), then
+R(l,r](p) = V (l) − V (r). This extends to non-square-free polynomials provided neither l nor r is a
+multiple root of p (a circumstance we shall ignore)
+
+We start from the tuple that emerges from disagregation.
+-}
+countPolyRoots :: (Fractional a, Eq a, Ord a) => (a, a, Poly a) -> Int
+countPolyRoots (l, r, p) = signVariations (sturmSequence l p) - signVariations (sturmSequence r p)
+    where
+        signVariations :: (Fractional a, Eq a, Ord a) => [a] -> Int
+        {-
+        When c0, c1, c2, . . . ck is a finite sequence of real numbers, then a sign variation or sign change in the sequence
+        is a pair of indices i < j such that cicj < 0, and either j = i + 1 or ck = 0 for all k such that i < k < j
+        -}
+        signVariations xs = length (filter (< 0) pairsMultiplied)
+            where
+                zeroesRemoved = filter (/= 0) xs
+                -- TODO: deal with all zero corner case
+                pairsMultiplied = zipWith (*) zeroesRemoved (tail zeroesRemoved)
+        sturmSequence :: (Fractional a, Eq a, Ord a) => a -> Poly a -> [a]
+        sturmSequence x q = map (evaluatePoly x) (doSeq [differentiatePoly q, q])
+            where
+                doSeq :: (Fractional a, Eq a, Ord a) => [Poly a] -> [Poly a]
+                {- 
+                   note that this is called with a list of length 2 and grows the list, so we don't need to match all cases
+                   note that we build this backwards to avoid use of append, but this doesn't affect the number of
+                   sign variations so there's no need to reverse it. 
+                -}
+                doSeq x@(xI:xIminusOne:xs) = if polyRemainder == zero then x else doSeq (negate polyRemainder : x)
+                    where
+                        polyRemainder = snd (euclidianDivision (xIminusOne, xI))
+
+euclidianDivision :: (Fractional a, Eq a, Ord a) => (Poly a, Poly a) -> (Poly a, Poly a)
+{- | 
+See https://en.wikipedia.org/wiki/Polynomial_greatest_common_divisor#Euclidean_division
+Take a pair of polynomials a, b, and produce the quotient and remainder q and r s.t. a = bq + r
+Input: a and b ≠ 0 two polynomials; Output: q, the quotient, and r, the remainder;
+Pseudocode:
+    Begin
+        q := 0
+        r := a
+        d := deg(b)
+        c := lc(b)
+        while deg(r) >= d do
+            s := lc(r)/c x^(deg(r)-d)
+            q := q + s
+            r := r − sb
+        end do
+        return (q, r)
+    end
+-}
+euclidianDivision (pa, pb) = if pb == zeroPoly then error "Division by zero polynomial" else goDivide (zeroPoly, pa)
+    where 
+        degB = degreePoly pb
+        leadingCoefficient :: Poly a -> a -- coefficient of the highest power term of the poly
+        leadingCoefficient (Poly x) = last x
+        lcB  = leadingCoefficient pb
+        -- goDivide :: (Fractional a, Eq a, Ord a) => (Poly a, Poly a) -> (Poly a, Poly a)
+        goDivide (q,r) = if degreePoly r < degB then (q,r) else goDivide (q + s, r - s * pb)
+            where s = makeMonomial (degreePoly r - degB) (leadingCoefficient r/lcB)
