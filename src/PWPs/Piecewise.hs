@@ -218,13 +218,13 @@ comparePW :: (Fractional a, Eq a, Ord a, Comparable a b, Calculable b, Evaluable
 comparePW x y = goCompare (Just EQ) $ disaggregate $ getPieces (plus x (minus y))
     where
         goCompare :: (Fractional a, Eq a, Ord a, Comparable a b) => Maybe Ordering -> [(a, a, b)] -> Maybe Ordering
-        goCompare Nothing _ = Nothing
-        goCompare prev []      = prev
+        goCompare Nothing _     = Nothing           -- stop once we get Nothing
+        goCompare prev []       = prev              -- when the list is exhauseted, keep the last result
         goCompare prev (x:xs)
-            | prev == Just EQ = goCompare next xs
-            | next == Just EQ = goCompare prev xs
-            | prev == next = goCompare prev xs
-            | otherwise = Nothing
+            | prev == Just EQ   = goCompare next xs -- Equality is neutral
+            | next == Just EQ   = goCompare prev xs -- Equality is neutral
+            | prev == next      = goCompare prev xs -- The two intervals compare the same way
+            | otherwise         = Nothing           -- The two intervals compare differently, so stop
             where
                 next = compareZero x
 
