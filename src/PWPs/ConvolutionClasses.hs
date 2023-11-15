@@ -46,7 +46,7 @@ class CompactConvolvable a b where
     We express a partial order by comparing an object on an interval with zero, delivering a Maybe Ordering 
 -}
 class Comparable a b where
-    compare :: (a, a, b) -> Maybe Ordering
+    compareZero :: (a, a, b) -> Maybe Ordering
 
 {- |
     Laws:

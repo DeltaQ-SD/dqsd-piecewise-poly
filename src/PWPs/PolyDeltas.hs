@@ -142,4 +142,4 @@ comparePDToZero (lf, uf, D f)
 
 instance (Fractional a, Eq a, Ord a) => Comparable a (PolyDelta a)
     where
-        compare = comparePDToZero
+        compareZero = comparePDToZero

@@ -42,6 +42,7 @@ module PWPs.Piecewise
     , piecesFinalValue
     , evaluateAtApoint
     , monotonic
+    , comparePW
 ) where
 
 import PWPs.ConvolutionClasses
@@ -211,4 +212,19 @@ disaggregate (x:xs@(x':_)) = (basepoint x, basepoint x', object x) : disaggregat
 -- | multiply by a constant piecewise
 infix 7 ><
 (><) = fmap . scale
+
+comparePW :: (Fractional a, Eq a, Ord a, Comparable a b, Calculable b, Evaluable a b) => Pieces a b -> Pieces a b -> Maybe Ordering
+-- | Check whether the pieces are all comparable, and if so all compare the same way 
+comparePW x y = goCompare (Just EQ) $ disaggregate $ getPieces (plus x (minus y))
+    where
+        goCompare :: (Fractional a, Eq a, Ord a, Comparable a b) => Maybe Ordering -> [(a, a, b)] -> Maybe Ordering
+        goCompare Nothing _ = Nothing
+        goCompare prev []      = prev
+        goCompare prev (x:xs)
+            | prev == Just EQ = goCompare next xs
+            | next == Just EQ = goCompare prev xs
+            | prev == next = goCompare prev xs
+            | otherwise = Nothing
+            where
+                next = compareZero x
 
