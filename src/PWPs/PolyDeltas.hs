@@ -27,6 +27,7 @@ module PWPs.PolyDeltas
     , integrate
     , evaluatePD
     , convolvePolyDeltas
+    , comparePDToZero
 )
 where
 import PWPs.ConvolutionClasses
@@ -127,3 +128,18 @@ convolvePolyDeltas (lf, uf, f) (lg, ug, D g) = convolvePolyDeltas (lg, ug, D g) 
 instance (Num a, Fractional a, Ord a) => CompactConvolvable a (PolyDelta a)
     where
         convolveIntervals = convolvePolyDeltas
+
+{-|
+    We measure whether or not a polydelta is consistently above or below zero, or equals zero
+-}
+comparePDToZero :: (Fractional a, Eq a, Ord a) => (a, a, PolyDelta a) -> Maybe Ordering
+comparePDToZero (lf, uf, P f) = SP.compareToZero (lf, uf, f) -- simple polynomial case
+comparePDToZero (lf, uf, D f) 
+    | lf /= uf      = error "Non-zero delta interval"
+    | f == 0        = Just EQ
+    | f > 0         = Just GT
+    | otherwise     = Just LT
+
+instance (Fractional a, Eq a, Ord a) => Comparable a (PolyDelta a)
+    where
+        compare = comparePDToZero

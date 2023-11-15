@@ -1,5 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+
 {-|
 Module      : SimplePolynomials
 Description : Polynomials as lists of coefficients
@@ -26,7 +27,7 @@ module PWPs.SimplePolynomials
     , differentiate
     , evaluatePoly
     , convolvePolys
-    , countPolyRoots
+    , compareToZero
 ) where
 
 import PWPs.ConvolutionClasses
@@ -256,3 +257,18 @@ euclidianDivision (pa, pb) = if pb == zeroPoly then error "Division by zero poly
         -- goDivide :: (Fractional a, Eq a, Ord a) => (Poly a, Poly a) -> (Poly a, Poly a)
         goDivide (q,r) = if degreePoly r < degB then (q,r) else goDivide (q + s, r - s * pb)
             where s = makeMonomial (degreePoly r - degB) (leadingCoefficient r/lcB)
+
+compareToZero :: (Fractional a, Eq a, Ord a) => (a, a, Poly a) -> Maybe Ordering
+{-|
+    We measure whether or not a polynomial is consistently above or below zero, or equals zero
+-}
+compareToZero (l, u, p)
+    | l >= u                        = error "Invalid interval"
+    | p == zeroPoly                 = Just EQ 
+    | lower * upper < 0             = Nothing -- different signs at the two ends
+    | countPolyRoots (l, u, p) > 0  = Nothing -- polynomial crosses zero
+    | lower > 0                     = Just GT -- upper must also be > 0 fronm previous case
+    | otherwise                     = Just LT -- upper and lower both < 0
+    where
+        lower = evaluatePoly l p
+        upper = evaluatePoly u p
