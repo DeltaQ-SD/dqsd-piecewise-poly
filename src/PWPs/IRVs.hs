@@ -38,6 +38,7 @@ module PWPs.IRVs
   , probMass
   , displayCDF
   , displayPDF
+  , compareIRVs
 )
 where
 
