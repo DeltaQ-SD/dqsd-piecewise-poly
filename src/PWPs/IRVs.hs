@@ -184,13 +184,10 @@ probMass :: (Ord a, Enum a, Eq a, Fractional a, Num a) => IRV a -> a
 -- | Just extract the final value of the CDF
 probMass = piecesFinalValue . makeCDF
 
-compareIRVs :: (Fractional a, Eq a, Ord a) => IRV a -> IRV a -> Maybe Ordering
+compareIRVs :: (Ord a, Enum a, Eq a, Fractional a, Num a) => IRV a -> IRV a -> Maybe Ordering
 {- | 
     If the two IRVs are partially ordered, return an ordering, otherwise return Nothing.
     Ordering is preserved through integration and differentiation, so go use either PDF
     or CDF - CDF -> PDF is cheaper so use PDFs.
 -}
-compareIRVs x y = comparePW xs ys
-    where
-        PDF xs = makePDF x -- xs is now Distribution a
-        PDF ys = makePDF y
+compareIRVs x y = comparePW (makePDF x) (makePDF y)
