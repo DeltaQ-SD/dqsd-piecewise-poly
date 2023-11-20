@@ -45,7 +45,6 @@ where
 import PWPs.Piecewise
 import PWPs.PolyDeltas
 import PWPs.SimplePolynomials (Poly (..), makePoly)
-import Data.Bits (Bits(xor))
 
 type Distribution a = Pieces a (PolyDelta a)
 
@@ -187,9 +186,9 @@ probMass = piecesFinalValue . makeCDF
 
 compareIRVs :: (Fractional a, Eq a, Ord a) => IRV a -> IRV a -> Maybe Ordering
 {- | 
-    If the two IRVs are partially ordered, return an ordering, otherwise return Nothing
+    If the two IRVs are partially ordered, return an ordering, otherwise return Nothing.
     Ordering is preserved through integration and differentiation, so go use either PDF
-    or CDF - CDF -> PDF is cheaper so use PDFs
+    or CDF - CDF -> PDF is cheaper so use PDFs.
 -}
 compareIRVs x y = comparePW xs ys
     where
