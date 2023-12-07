@@ -72,12 +72,25 @@ instance (Num a, Eq a, Ord a) => Applicative (Pieces a) where
     --(<*>) :: (Num a, Eq a, Ord a) => Pieces a (a1 -> b) -> Pieces a a1 -> Pieces a b
     f <*> g = combinePieces f g 
 
-combinePieces :: (Num a, Eq a, Ord a) => Pieces a (a1 -> b) -> Pieces a a1 -> Pieces a b
+{-|
+    We run through a set of pieces, merging intervals whose objects are declared mergeable
+-}
+mergePieces :: Mergeable b => Pieces a b -> Pieces a b
+mergePieces f = Pieces (doMerge (getPieces f))
+    where
+        doMerge :: Mergeable b => [Piece a b] -> [Piece a b]
+        doMerge []          = []  -- can occur when we merge the last two pieces
+        doMerge [x]         = [x] -- stop when there's nothing left to merge
+        doMerge (x0:x1:xs)  = case mergeObject (object x0) (object x1) of
+            Nothing -> x0:doMerge (x1:xs) -- can't merge so just move on
+            Just o  -> (Piece {basepoint = basepoint x0, object = o}):doMerge xs -- extend interval through second basepoint
+        
+combinePieces :: (Num a, Eq a, Ord a, Mergeable b) => Pieces a (a1 -> b) -> Pieces a a1 -> Pieces a b
 {- |
-We combine two piecewise objects by splitting intervals to obtain a consistent set.
+We combine two piecewise objects by splitting the intervals of one or the other or both to obtain a consistent set.
 Where one list has just a single element we just process the tail of the other list against the first list's terminal object.
 -}
-combinePieces f g = Pieces (doCombine (getPieces f) (getPieces g))
+combinePieces f g = mergePieces (Pieces (doCombine (getPieces f) (getPieces g)))
     where
         doCombine :: (Num a, Eq a, Ord a) => [Piece a (a1 -> b)] -> [Piece a a1] -> [Piece a b]
         doCombine [] _ = error "Empty piece list" -- lists should never be empty

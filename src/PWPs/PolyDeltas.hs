@@ -143,3 +143,15 @@ comparePDToZero (lf, uf, D f)
 instance (Fractional a, Eq a, Ord a) => Comparable a (PolyDelta a)
     where
         compareZero = comparePDToZero
+
+{-|
+    We merge polynomials if they are equal. We merge deltas by adding them (not that we expect this case).
+    We merge a zero delta with a polynomial by discarding it. Other cases do not merge.
+-}
+instance (Num a, Eq a) => Mergeable (PolyDelta a)
+    where
+        mergeObject a b = case (a, b) of
+            (P x, P y) -> if x == y then Just (P y) else Nothing
+            (D x, P y) -> if x == 0 then Just (P y) else Nothing
+            (D x, D y) -> Just (D (x + y))
+            (P _, D _) -> Nothing

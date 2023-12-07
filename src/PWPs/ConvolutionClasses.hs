@@ -10,7 +10,7 @@ Stability   : experimental
 
 The standard algebraic classes such as semiring do not have all the operators we need.
 In particular we want integration and differentiation operators that satisfy the
-Fundamental Theorem of Calculus and combine appropritely with addition and multiplication.
+Fundamental Theorem of Calculus and combine appropriately with addition and multiplication.
 We also want a convolution operator that behaves correctly.
 -}
 module PWPs.ConvolutionClasses
@@ -19,6 +19,7 @@ module PWPs.ConvolutionClasses
   , Evaluable (..)
   , CompactConvolvable (..)
   , Comparable (..)
+  , Mergeable (..)
 )
 where
 
@@ -49,6 +50,12 @@ class Comparable a b where
     compareZero :: (a, a, b) -> Maybe Ordering
 
 {- |
+    We want to know when two objects can be merged - this is not the same as saying they are equal
+-}
+class Mergeable a where
+    mergeObject :: a -> a -> Maybe a
+
+{- |
     Laws:
     Usual stuff with +, *, -
     differentiate . integrate = id              } Fundamental theorem
@@ -58,4 +65,5 @@ class Comparable a b where
     convolution is commutative and associative
     differentiate (f <+> g) == (differentiate f) <+> g == f <+> (differentiate g)
     integrate (f <+> g) == (integrate f) * (integrate g)
+    operations maintain ordering, if present
 -}
