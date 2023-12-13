@@ -121,6 +121,7 @@ combinePieces f g = mergePieces (Pieces (doCombine (getPieces f) (getPieces g)))
                     by1 = basepoint y1  -- might be = by0 if we have a delta
                     ox0 = object x0
                     oy0 = object y0
+        doCombine _ _ = error "Unexpected combination case"
 
 monotonic :: Ord a => [a] -> Bool 
 -- | Check that a list of values is monotonic (not strict to allow deltas)
