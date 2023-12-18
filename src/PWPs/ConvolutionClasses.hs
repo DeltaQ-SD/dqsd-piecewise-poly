@@ -24,18 +24,18 @@ module PWPs.ConvolutionClasses
 where
 
 class Calculable a where
-    plus :: a -> a -> a
-    times :: a -> a -> a
-    minus :: a -> a
-    zero :: a
-    fromInteger :: Integer -> a
+    plus          :: a -> a -> a
+    times         :: a -> a -> a
+    minus         :: a -> a
+    zero          :: a
+    fromInteger   :: Integer -> a
     differentiate :: a -> a
-    integrate :: a -> a
+    integrate     :: a -> a
 
 class Evaluable a b where
     evaluate :: a -> b -> a -- evaluate b at point a
-    boost :: a -> b -> b    -- increment b by a
-    scale :: a -> b -> b    -- scale b by a
+    boost    :: a -> b -> b -- increment b by a
+    scale    :: a -> b -> b -- scale b by a
 
 {- |
     Convolution in our library is over finite intervals - this is what piecewiseness needs
@@ -54,6 +54,7 @@ class Comparable a b where
 -}
 class Mergeable a where
     mergeObject :: a -> a -> Maybe a
+    zeroObject  :: a
 
 {- |
     Laws:
