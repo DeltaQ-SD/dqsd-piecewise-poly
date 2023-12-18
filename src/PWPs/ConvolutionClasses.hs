@@ -51,6 +51,7 @@ class Comparable a b where
 
 {- |
     We want to know when two objects can be merged - this is not the same as saying they are equal
+    We also define a zeroObject to be used when there aren't two objects to be merged
 -}
 class Mergeable a where
     mergeObject :: a -> a -> Maybe a

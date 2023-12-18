@@ -168,14 +168,13 @@ instance (Num a, Eq a, Ord a, Calculable b, Mergeable b, Evaluable a b) => Calcu
         plus            = combinePieces plus 
         times           = combinePieces times 
         minus           = fmap minus 
-        zero            = Pieces [Piece {basepoint = 0 :: a, object = zero :: b}]
+        zero            = Pieces [Piece {basepoint = 0 :: a, object = zeroObject}]
         fromInteger n   = Pieces [Piece {basepoint = 0 :: a, object = PWPs.ConvolutionClasses.fromInteger n}]
-        differentiate   = differentiatePieces
+        {- | Piecewise differentiation is straightforward: just differentiate all the objects
+        Since constants all differentate to zero, it is worth checking whether pieces can be merged.   
+        -}
+        differentiate   = mergePieces . fmap differentiate
         integrate       = integratePieces
-
--- | Piecewise differentiation is easy: just differentiate all the objects
-differentiatePieces :: (Num a, Eq a, Ord a, Calculable b) => Pieces a b -> Pieces a b
-differentiatePieces = fmap differentiate
 
 {- |
 Piecewise integration is harder - need to evaluate at the boundary points to make the pieces join up.
@@ -205,14 +204,17 @@ integratePieces ps = Pieces (goInt 0 (disaggregate (getPieces ps)))
 
 evaluateAtApoint :: (Num a, Ord a, Evaluable a b) => a -> Pieces a b -> a
 {- |
-To evaluate at a point we need to find the interval the point is in and then evaluate the corresponding object
-i.e. find i s.t. basepoint(i) <= p < basepoint(i+1).
-Our point may be beyond the last basepoint, in which case we take the final value
+To evaluate a piecewise object at a point we need to find the interval the point is in, 
+(i.e. find i s.t. basepoint(i) <= p < basepoint(i+1)) and then evaluate the corresponding object.
+Our point may be beyond the last basepoint, in which case we take the final value, 
+or it may be before the first basepoint, in which case we evaluate the presumed zero object.
 -}
-evaluateAtApoint point as = if point < basepoint (head (getPieces as)) 
-                                then error "Invalid point" 
-                                else goEval point (getPieces as)
+evaluateAtApoint point as 
+    | null pas                      = error "Empty piece list"
+    | point < basepoint (head pas)  = 0
+    | otherwise                     = goEval point pas
     where
+        pas                 = getPieces as
         goEval _ []         = error "Empty piece list"
         goEval _ [_]        = piecesFinalValue as
         goEval p (x1:x2:xs) = if (basepoint x1 <= p) && (p < basepoint x2) 

@@ -89,7 +89,7 @@ instance (Eq a, Num a, Fractional a) => Calculable (PolyDelta a)
         plus             = plusPD
         times            = timesPD
         minus            = minusPD
-        zero             = D 0 -- is this the best choice?
+        zero             = P 0 -- is this the best choice?
         fromInteger n    = D (Prelude.fromInteger n) -- is this the best choice?
         differentiate    = differentiatePD
         integrate        = integratePD 
@@ -148,10 +148,11 @@ instance (Fractional a, Eq a, Ord a) => Comparable a (PolyDelta a)
     We merge polynomials if they are equal. We merge deltas by adding them (not that we expect this case).
     We merge a zero delta with a polynomial by discarding it. Other cases do not merge.
 -}
-instance (Num a, Eq a) => Mergeable (PolyDelta a)
+instance (Num a, Eq a, Fractional a) => Mergeable (PolyDelta a)
     where
         mergeObject a b = case (a, b) of
             (P x, P y) -> if x == y then Just (P y) else Nothing
             (D x, P y) -> if x == 0 then Just (P y) else Nothing
             (D x, D y) -> Just (D (x + y))
             (P _, D _) -> Nothing
+        zeroObject = zero
