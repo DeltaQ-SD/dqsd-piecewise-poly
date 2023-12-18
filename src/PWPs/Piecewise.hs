@@ -157,17 +157,17 @@ makePieces :: (Num a, Eq a, Ord a) => [(a, o)] -> Pieces a o
 -- check the basepoints are in order and start at 0
 makePieces xs 
     | null xs                            = error "Provided list was empty"
-    | fst (head xs) /= 0                 = error "List did not start at zero"
+--    | fst (head xs) /= 0                 = error "List did not start at zero"
     | length xs == 1                     = Pieces [makePiece (head xs)] -- deal with the single element list case
     | not (monotonic (map fst xs))       = error "Basepoints were not in order" 
     | otherwise                          = Pieces (map makePiece xs)
 
 -- | Use the applicative instance to construct the calculable instance.
-instance (Num a, Eq a, Ord a, Calculable b, Evaluable a b) => Calculable (Pieces a b)
+instance (Num a, Eq a, Ord a, Calculable b, Mergeable b, Evaluable a b) => Calculable (Pieces a b)
     where
-        plus x y        = plus <$> x <*> y
-        times x y       = times <$> x <*> y
-        minus x         = minus <$> x
+        plus            = combinePieces plus 
+        times           = combinePieces times 
+        minus           = fmap minus 
         zero            = Pieces [Piece {basepoint = 0 :: a, object = zero :: b}]
         fromInteger n   = Pieces [Piece {basepoint = 0 :: a, object = PWPs.ConvolutionClasses.fromInteger n}]
         differentiate   = differentiatePieces
@@ -234,7 +234,7 @@ instance (Num a, Eq a, Ord a, Evaluable a b) => Evaluable a (Pieces a b)
 Piecwise convolution requires convolving the pieces pairwise and then summing the results,
 i.e. convolve every piece with every other piece and combine the results.
 -}
-(<+>) :: (Ord a, Enum a, Fractional a, Calculable b, Evaluable a b, CompactConvolvable a b) => Pieces a b -> Pieces a b -> Pieces a b
+(<+>) :: (Ord a, Enum a, Fractional a, Calculable b, Mergeable b, Evaluable a b, CompactConvolvable a b) => Pieces a b -> Pieces a b -> Pieces a b
 infix 7 <+>
 (<+>) (Pieces []) _ = error "Empty piece list"
 (<+>) _ (Pieces []) = error "Empty piece list"
@@ -253,7 +253,7 @@ disaggregate (x:xs@(x':_)) = (basepoint x, basepoint x', object x) : disaggregat
 infix 7 ><
 (><) = fmap . scale
 
-comparePW :: (Fractional a, Eq a, Ord a, Comparable a b, Calculable b, Evaluable a b) => Pieces a b -> Pieces a b -> Maybe Ordering
+comparePW :: (Fractional a, Eq a, Ord a, Comparable a b, Calculable b, Mergeable b, Evaluable a b) => Pieces a b -> Pieces a b -> Maybe Ordering
 -- | Check whether the pieces are all comparable, and if so all compare the same way 
 comparePW x y = goCompare (Just EQ) $ disaggregate $ getPieces (plus x (minus y))
     where
@@ -267,4 +267,3 @@ comparePW x y = goCompare (Just EQ) $ disaggregate $ getPieces (plus x (minus y)
             | otherwise         = Nothing           -- The two intervals compare differently, so stop
             where
                 next = compareZero x
-
