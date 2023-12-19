@@ -154,10 +154,9 @@ monotonic :: Ord a => [a] -> Bool
 monotonic ys = and (zipWith (<=) ys (tail ys))
 
 makePieces :: (Num a, Eq a, Ord a) => [(a, o)] -> Pieces a o
--- check the basepoints are in order and start at 0
+-- check the basepoints are in order 
 makePieces xs 
     | null xs                            = error "Provided list was empty"
---    | fst (head xs) /= 0                 = error "List did not start at zero"
     | length xs == 1                     = Pieces [makePiece (head xs)] -- deal with the single element list case
     | not (monotonic (map fst xs))       = error "Basepoints were not in order" 
     | otherwise                          = Pieces (map makePiece xs)
@@ -207,7 +206,7 @@ evaluateAtApoint :: (Num a, Ord a, Evaluable a b) => a -> Pieces a b -> a
 To evaluate a piecewise object at a point we need to find the interval the point is in, 
 (i.e. find i s.t. basepoint(i) <= p < basepoint(i+1)) and then evaluate the corresponding object.
 Our point may be beyond the last basepoint, in which case we take the final value, 
-or it may be before the first basepoint, in which case we evaluate the presumed zero object.
+or it may be before the first basepoint, in which case we evaluate the presumed zero object (to 0).
 -}
 evaluateAtApoint point as 
     | null pas                      = error "Empty piece list"
@@ -236,7 +235,7 @@ instance (Num a, Eq a, Ord a, Evaluable a b) => Evaluable a (Pieces a b)
 Piecwise convolution requires convolving the pieces pairwise and then summing the results,
 i.e. convolve every piece with every other piece and combine the results.
 -}
-(<+>) :: (Ord a, Enum a, Fractional a, Calculable b, Mergeable b, Evaluable a b, CompactConvolvable a b) => Pieces a b -> Pieces a b -> Pieces a b
+(<+>) :: (Ord a, Num a, Enum a, Fractional a, Calculable b, Mergeable b, Evaluable a b, CompactConvolvable a b) => Pieces a b -> Pieces a b -> Pieces a b
 infix 7 <+>
 (<+>) (Pieces []) _ = error "Empty piece list"
 (<+>) _ (Pieces []) = error "Empty piece list"
@@ -245,9 +244,9 @@ infix 7 <+>
           dbs = disaggregate (getPieces bs)
 
 -- | disaggregate takes a Pieces list and produces a list of separate bounded intervals
-disaggregate :: [Piece a o] -> [(a, a, o)]
+disaggregate :: Num a => [Piece a o] -> [(a, a, o)]
 disaggregate [] = error "Empty piece list"
-disaggregate [x] = [(basepoint x, basepoint x, object x)] -- turn the last piece into a null interval
+disaggregate [x] = [(basepoint x, 2 * basepoint x, object x)] -- turn the last piece into an 'infinite' interval
 disaggregate (x:xs@(x':_)) = (basepoint x, basepoint x', object x) : disaggregate xs
 
 (><) :: (Eq a, Num a, Evaluable a b) => a -> Pieces a b -> Pieces a b
@@ -265,7 +264,7 @@ comparePW x y = goCompare (Just EQ) $ disaggregate $ getPieces (plus x (minus y)
         goCompare prev (x:xs)
             | prev == Just EQ   = goCompare next xs -- Equality is neutral
             | next == Just EQ   = goCompare prev xs -- Equality is neutral
-            | prev == next      = goCompare prev xs -- The two intervals compare the same way
+            | prev == next      = goCompare next xs -- The two intervals compare the same way, so carry on
             | otherwise         = Nothing           -- The two intervals compare differently, so stop
             where
                 next = compareZero x
