@@ -102,10 +102,11 @@ instance (Eq a, Num a, Fractional a) => Evaluable a (PolyDelta a)
 
 -- | Removes excess basepoints if the objects on either side are the same
 aggregate :: Eq a => [(a, PolyDelta a)] -> [(a, PolyDelta a)]
+aggregate []    = error "Empty list of polydeltas"
+aggregate [x]   = [x] -- need at least two elements to do anything
 aggregate ((bx, x):(by, y):xs)
-    | x == y    = aggregate $ (bx, x):xs
+    | x == y    = aggregate $ (bx, x):xs -- throw away the second basepoint
     | otherwise = (bx, x) : aggregate ((by, y):xs)
-aggregate xs = xs
 
 convolvePolyDeltas :: (Num a, Fractional a, Ord a)
                    => (a, a, PolyDelta a) -> (a, a, PolyDelta a) -> [(a, PolyDelta a)]
