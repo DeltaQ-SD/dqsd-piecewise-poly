@@ -161,7 +161,6 @@ makePieces xs
     | not (monotonic (map fst xs))       = error "Basepoints were not in order" 
     | otherwise                          = Pieces (map makePiece xs)
 
--- | Use the applicative instance to construct the calculable instance.
 instance (Num a, Eq a, Ord a, Calculable b, Mergeable b, Evaluable a b) => Calculable (Pieces a b)
     where
         plus            = combinePieces plus 
