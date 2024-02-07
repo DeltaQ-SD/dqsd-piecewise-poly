@@ -255,7 +255,7 @@ infix 7 ><
 
 comparePW :: (Fractional a, Eq a, Ord a, Comparable a b, Calculable b, Mergeable b, Evaluable a b) => Pieces a b -> Pieces a b -> Maybe Ordering
 -- | Check whether the pieces are all comparable, and if so all compare the same way 
-comparePW x y = goCompare (Just EQ) $ disaggregate $ getPieces (plus x (minus y))
+comparePW x' y' = goCompare (Just EQ) $ disaggregate $ getPieces (plus x' (minus y'))
     where
         goCompare :: (Fractional a, Eq a, Ord a, Comparable a b) => Maybe Ordering -> [(a, a, b)] -> Maybe Ordering
         goCompare Nothing _     = Nothing           -- stop once we get Nothing
