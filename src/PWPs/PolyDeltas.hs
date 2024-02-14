@@ -111,13 +111,13 @@ aggregate ((bx, x):(by, y):xs)
 convolvePolyDeltas :: (Num a, Fractional a, Ord a)
                    => (a, a, PolyDelta a) -> (a, a, PolyDelta a) -> [(a, PolyDelta a)]
 {- |
-When both arguments are polynomials, we use convolvePolys and just map the type.
+When both arguments are polynomials, we check the intervals are non-zero then use convolvePolys and just map the type.
 For a delta, lower == upper (invariant to be checked), and the effect of the delta is to translate the other
 argument (whichever it is) along by this amount. Need to ensure there is still an initial interval based at zero.
 -} 
 convolvePolyDeltas (lf, uf, P f) (lg, ug, P g) = 
-    if (uf < lf) || (ug < lg) then error "Negative interval width"
-                              else aggregate $ map (\(x, p) -> (x, P p)) (convolvePolys (lf, uf, f) (lg, ug, g))
+    if (uf <= lf) || (ug <= lg) then error "Invalid polynomial interval width"
+                                else aggregate $ map (\(x, p) -> (x, P p)) (convolvePolys (lf, uf, f) (lg, ug, g))
 convolvePolyDeltas (lf, uf, D f) (lg, ug, g) 
     | lf /= uf     = error "Non-zero delta interval"
     | ug < lg      = error "Negative interval width"
