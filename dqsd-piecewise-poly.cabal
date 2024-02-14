@@ -91,7 +91,12 @@ test-suite dqsd-piecewise-poly-test
     -- other-modules:
 
     -- LANGUAGE extensions used by modules in this package.
-    -- other-extensions:
+    other-extensions:   GeneralizedNewtypeDeriving
+                      , ScopedTypeVariables
+                      , MultiParamTypeClasses
+                      , FlexibleInstances
+                      , AllowAmbiguousTypes
+                      , TypeSynonymInstances
 
     -- The interface type and version of the test suite.
     type:             exitcode-stdio-1.0
