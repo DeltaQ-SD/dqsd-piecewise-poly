@@ -213,6 +213,7 @@ countPolyRoots (l, r, p) = signVariations (sturmSequence l p) - signVariations (
         -}
         signVariations xs = length (filter (< 0) pairsMultiplied)
             where
+                -- we implement the clause "ck = 0 for all k such that i < k < j" by removing zero elements
                 zeroesRemoved = filter (/= 0) xs
                 -- TODO: deal with all zero corner case
                 pairsMultiplied = zipWith (*) zeroesRemoved (tail zeroesRemoved)
@@ -221,13 +222,14 @@ countPolyRoots (l, r, p) = signVariations (sturmSequence l p) - signVariations (
             where
                 doSeq :: (Fractional a, Eq a, Ord a) => [Poly a] -> [Poly a]
                 {- 
-                   note that this is called with a list of length 2 and grows the list, so we don't need to match all cases
-                   note that we build this backwards to avoid use of append, but this doesn't affect the number of
+                   Note that this is called with a list of length 2 and grows the list, so we don't need to match all cases
+                   Note that we build this backwards to avoid use of append, but this doesn't affect the number of
                    sign variations so there's no need to reverse it. 
                 -}
-                doSeq x@(xI:xIminusOne:xs) = if polyRemainder == zero then x else doSeq (negate polyRemainder : x)
+                doSeq x'@(xI:xIminusOne:_) = if polyRemainder == zero then x' else doSeq (negate polyRemainder : x')
                     where
                         polyRemainder = snd (euclidianDivision (xIminusOne, xI))
+                doSeq _ = error "List too short" -- prevent warning about missing cases
 
 euclidianDivision :: (Fractional a, Eq a, Ord a) => (Poly a, Poly a) -> (Poly a, Poly a)
 {- | 

@@ -20,7 +20,7 @@ name:               dqsd-piecewise-poly
 -- PVP summary:     +-+------- breaking API changes
 --                  | | +----- non-breaking API additions
 --                  | | | +--- code changes with no API change
-version:            0.1.0.0
+version:            1.0.0.0
 
 -- A short (one-line) description of the package.
 synopsis:           A piecewise polynomial implementation of dqsd-classes
@@ -60,13 +60,12 @@ library
     -- Modules exported by the library.
     exposed-modules:  DeltaQ.PWPs
                     , PWPs.IRVs
-                    , PWPs.Piecewise
+
+    -- Modules included in this library but not exported.
+    other-modules:    PWPs.Piecewise
                     , PWPs.PolyDeltas
                     , PWPs.SimplePolynomials
                     , PWPs.ConvolutionClasses
-
-    -- Modules included in this library but not exported.
-    -- other-modules:
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
@@ -92,7 +91,12 @@ test-suite dqsd-piecewise-poly-test
     -- other-modules:
 
     -- LANGUAGE extensions used by modules in this package.
-    -- other-extensions:
+    other-extensions:   GeneralizedNewtypeDeriving
+                      , ScopedTypeVariables
+                      , MultiParamTypeClasses
+                      , FlexibleInstances
+                      , AllowAmbiguousTypes
+                      , TypeSynonymInstances
 
     -- The interface type and version of the test suite.
     type:             exitcode-stdio-1.0

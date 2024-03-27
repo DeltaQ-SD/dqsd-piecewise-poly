@@ -89,7 +89,7 @@ instance (Eq a, Num a, Fractional a) => Calculable (PolyDelta a)
         plus             = plusPD
         times            = timesPD
         minus            = minusPD
-        zero             = D 0 -- is this the best choice?
+        zero             = P 0 -- is this the best choice?
         fromInteger n    = D (Prelude.fromInteger n) -- is this the best choice?
         differentiate    = differentiatePD
         integrate        = integratePD 
@@ -102,21 +102,22 @@ instance (Eq a, Num a, Fractional a) => Evaluable a (PolyDelta a)
 
 -- | Removes excess basepoints if the objects on either side are the same
 aggregate :: Eq a => [(a, PolyDelta a)] -> [(a, PolyDelta a)]
+aggregate []    = error "Empty list of polydeltas"
+aggregate [x]   = [x] -- need at least two elements to do anything
 aggregate ((bx, x):(by, y):xs)
-    | x == y    = aggregate $ (bx, x):xs
+    | x == y    = aggregate $ (bx, x):xs -- throw away the second basepoint
     | otherwise = (bx, x) : aggregate ((by, y):xs)
-aggregate xs = xs
 
 convolvePolyDeltas :: (Num a, Fractional a, Ord a)
                    => (a, a, PolyDelta a) -> (a, a, PolyDelta a) -> [(a, PolyDelta a)]
 {- |
-When both arguments are polynomials, we use convolvePolys and just map the type.
+When both arguments are polynomials, we check the intervals are non-zero then use convolvePolys and just map the type.
 For a delta, lower == upper (invariant to be checked), and the effect of the delta is to translate the other
 argument (whichever it is) along by this amount. Need to ensure there is still an initial interval based at zero.
 -} 
 convolvePolyDeltas (lf, uf, P f) (lg, ug, P g) = 
-    if (uf < lf) || (ug < lg) then error "Negative interval width"
-                              else aggregate $ map (\(x, p) -> (x, P p)) (convolvePolys (lf, uf, f) (lg, ug, g))
+    if (uf <= lf) || (ug <= lg) then error "Invalid polynomial interval width"
+                                else aggregate $ map (\(x, p) -> (x, P p)) (convolvePolys (lf, uf, f) (lg, ug, g))
 convolvePolyDeltas (lf, uf, D f) (lg, ug, g) 
     | lf /= uf     = error "Non-zero delta interval"
     | ug < lg      = error "Negative interval width"
@@ -143,3 +144,16 @@ comparePDToZero (lf, uf, D f)
 instance (Fractional a, Eq a, Ord a) => Comparable a (PolyDelta a)
     where
         compareZero = comparePDToZero
+
+{-|
+    We merge polynomials if they are equal. We merge deltas by adding them (not that we expect this case).
+    We merge a zero delta with a polynomial by discarding it. Other cases do not merge.
+-}
+instance (Num a, Eq a, Fractional a) => Mergeable (PolyDelta a)
+    where
+        mergeObject a b = case (a, b) of
+            (P x, P y) -> if x == y then Just (P y) else Nothing
+            (D x, P y) -> if x == 0 then Just (P y) else Nothing
+            (D x, D y) -> Just (D (x + y))
+            (P _, D _) -> Nothing
+        zeroObject = zero
