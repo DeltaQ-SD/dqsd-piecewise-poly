@@ -18,6 +18,8 @@ We provide functions to turn an IRV into a set of point-pairs representing eithe
 We define operators for convolution, first-to-finish, all-to-finish and weighted choice.
 We also provide an operation to extract the probability mass (<= 1).
 
+We provide an implementation of the partial order on IRVs.
+
 Note that we can consistently represent 'bottom' using polynomials and 'top' by including deltas.
 -}
 module PWPs.IRVs
@@ -31,7 +33,9 @@ module PWPs.IRVs
   , constructCDF
   , constructLinearCDF
   , firstToFinish
+  , multiFtF
   , allToFinish
+  , multiAtF
   , probChoice
   , multiWeightedChoice
   , (PWPs.IRVs.<+>)
@@ -39,6 +43,9 @@ module PWPs.IRVs
   , displayCDF
   , displayPDF
   , compareIRVs
+  , support
+  , top
+  , bottom
 )
 where
 
@@ -50,6 +57,12 @@ type Distribution a = Pieces a (PolyDelta a)
 
 data IRV a = PDF (Distribution a) | CDF (Distribution a)
     deriving (Eq, Show)
+
+top :: (Ord a, Num a) => IRV a
+top = PDF (makePieces [(0, D 1), (0, P (makePoly 0))])
+
+bottom :: (Ord a, Num a) => IRV a
+bottom = CDF (makePieces [(0, P (makePoly 0))])
 
 makePDF :: (Ord a, Enum a, Eq a, Fractional a, Num a) => IRV a -> Distribution a
 -- | Force an IRV into a PDF by differentiating if necessary
@@ -74,7 +87,7 @@ constructDelta x
     | x == 0 = PDF (makePieces [(0, D 1), (0, P 0)])
     | otherwise = PDF (makePieces [(0, P 0), (x, D 1), (x, P 0)])
 
--- | Polynomial with zero value everywhere
+-- | PDF with zero value everywhere
 zeroPDF :: (Ord a, Enum a, Eq a, Fractional a, Num a) => IRV a
 zeroPDF = PDF (makePieces [(0, P $ makePoly 0)])
 
@@ -151,21 +164,39 @@ firstToFinish x y = CDF (cdfOfx `plus` cdfOfy `plus` minus (cdfOfx `times` cdfOf
         cdfOfx = makeCDF x
         cdfOfy = makeCDF y
 
+multiFtF :: (Ord a, Enum a, Eq a, Fractional a, Num a) => [IRV a] -> IRV a
+-- | Compute the first-to-finsh of a list of IRVs
+multiFtF [] = error "Empty list of IRVs"
+multiFtF [x] = x
+-- now know we have at least two, so head and tail are safe
+multiFtF xs = CDF $ invert $ foldr times (head icdfs) (tail icdfs)
+    where
+        invert :: (Eq a, Ord a, Fractional a) => Distribution a -> Distribution a
+        -- | Construct the inverse CDF by subtracting the CDF from 1
+        invert = applyObject plus (P $ makePoly 1) . minus
+        icdfs = map (invert . makeCDF) xs
+
 allToFinish :: (Ord a, Enum a, Eq a, Fractional a, Num a) => IRV a -> IRV a -> IRV a
 allToFinish x y = CDF (makeCDF x `times` makeCDF y)
 
-probChoice :: (Ord a, Enum a, Eq a, Fractional a, Num a) => (a, IRV a) -> (a, IRV a) -> IRV a
+multiAtF :: (Ord a, Enum a, Eq a, Fractional a, Num a) => [IRV a] -> IRV a
+-- | Compute the last-to-finsh of a list of IRVs
+multiAtF [] = error "Empty list of IRVs"
+multiAtF [x] = x
+-- now know we have at least two, so head and tail are safe
+multiAtF xs = CDF $ foldr times (head cdfs) (tail cdfs)
+    where
+        cdfs = map makeCDF xs
+
+probChoice :: (Ord a, Enum a, Eq a, Fractional a, Num a) => a -> IRV a -> IRV a -> IRV a
 {- | 
+The probability is for choosing the left branch.
 We can do this on either PDFs or CDFs; if we have CDFs deliver a CDF, if we have both PDFs or one of each, deliver a PDF.
-We use weights: these don't have to be the BaseType but this avoids conversions
 -}
-probChoice (wx, x) (wy, y) = 
+probChoice p x y = 
     case (x,y) of
-        (CDF a, CDF b) -> CDF ((xprob >< a) `plus` (yprob >< b))
-        _              -> PDF ((xprob >< makePDF x) `plus` (yprob >< makePDF y))
-        where
-            xprob = wx/(wx + wy)
-            yprob = wy/(wx + wy)
+        (CDF a, CDF b) -> CDF ((p >< a) `plus` ((1 - p) >< b))
+        _              -> PDF ((p >< makePDF x) `plus` ((1 - p) >< makePDF y))
 
 multiWeightedChoice :: (Ord a, Enum a, Eq a, Fractional a, Num a) => [(a, IRV a)] -> IRV a
 -- we'll force everything into PDFs and deliver a PDF
@@ -191,3 +222,8 @@ compareIRVs :: (Ord a, Enum a, Eq a, Fractional a, Num a) => IRV a -> IRV a -> M
     or CDF - CDF -> PDF is cheaper so use PDFs.
 -}
 compareIRVs x y = comparePW (makePDF x) (makePDF y)
+
+support :: (Eq a, Fractional a) => IRV a -> (a, a)
+-- | return the first and last basepoints for which the value is significant
+support (PDF x) = piecewiseSupport x
+support (CDF x) = piecewiseSupport x

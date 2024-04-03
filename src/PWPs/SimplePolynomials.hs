@@ -69,7 +69,7 @@ scalePoly x (Poly xs) = Poly (map (*x) xs)
 
 addPolys :: (Eq a, Num a) => Poly a -> Poly a -> Poly a
 {- |
-   Add polynomials by simplyly adding their coefficients as long as both lists continue.
+   Add polynomials by simply adding their coefficients as long as both lists continue.
    When one list runs out we take the tail of the longer list (this prevents us from just using zipWith!).
    Addtion might cancel out the highest order terms, so need to trim just in case.
 -}
@@ -263,14 +263,17 @@ euclidianDivision (pa, pb) = if pb == zeroPoly then error "Division by zero poly
 compareToZero :: (Fractional a, Eq a, Ord a) => (a, a, Poly a) -> Maybe Ordering
 {-|
     We measure whether or not a polynomial is consistently above or below zero, or equals zero
+    Need to consider special cases where there is a root at a boundary point
 -}
 compareToZero (l, u, p)
     | l >= u                        = error "Invalid interval"
     | p == zeroPoly                 = Just EQ 
-    | lower * upper < 0             = Nothing -- different signs at the two ends
+    | lower * upper < 0             = Nothing -- quick test to eliminate simple cases
     | countPolyRoots (l, u, p) > 0  = Nothing -- polynomial crosses zero
-    | lower > 0                     = Just GT -- upper must also be > 0 fronm previous case
-    | otherwise                     = Just LT -- upper and lower both < 0
+    -- since the polynomial has no roots, the comparison is detmined by the boundary values
+    | lower == 0 || upper == 0      = Just (compare upper lower) 
+    | lower > 0                     = Just GT -- upper must also be > 0 due to the lack of roots
+    | otherwise                     = Just LT -- upper and lower both < 0 due to the lack of roots
     where
         lower = evaluatePoly l p
         upper = evaluatePoly u p

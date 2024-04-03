@@ -20,7 +20,7 @@ name:               dqsd-piecewise-poly
 -- PVP summary:     +-+------- breaking API changes
 --                  | | +----- non-breaking API additions
 --                  | | | +--- code changes with no API change
-version:            1.0.0.0
+version:            2.0.0.0
 
 -- A short (one-line) description of the package.
 synopsis:           A piecewise polynomial implementation of dqsd-classes
@@ -35,10 +35,10 @@ license:            BSD-3-Clause
 license-file:       LICENSE
 
 -- The package author(s).
-author:             jacobjwalters
+author:             peterwthompson
 
 -- An email address to which users can send suggestions, bug reports, and patches.
-maintainer:         prog@jacobwalte.rs
+maintainer:         peter.thompson@pnsol.com
 
 -- A copyright notice.
 -- copyright:
