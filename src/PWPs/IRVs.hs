@@ -40,6 +40,7 @@ module PWPs.IRVs
   , multiWeightedChoice
   , (PWPs.IRVs.<+>)
   , probMass
+  , invert
   , displayCDF
   , displayPDF
   , compareIRVs
@@ -47,13 +48,14 @@ module PWPs.IRVs
   , top
   , bottom
   , centiles
+  , cumulativeMass
 )
 where
 
 import PWPs.Piecewise
 import PWPs.PolyDeltas
 import PWPs.SimplePolynomials (Poly (..), makePoly)
-import Data.Bool (bool)
+import GHC.IO.Encoding.Failure (codingFailureModeSuffix)
 
 type Distribution a = Pieces a (PolyDelta a)
 
@@ -65,6 +67,11 @@ top = PDF (makePieces [(0, D 1), (0, P (makePoly 0))])
 
 bottom :: (Ord a, Num a) => IRV a
 bottom = CDF (makePieces [(0, P (makePoly 0))])
+-- evaluateAtApoint :: (Num a, Ord a, Evaluable a b) => a -> Pieces a b -> [a]
+-- makeCDF :: (Ord a, Enum a, Eq a, Fractional a, Num a) => IRV a -> Distribution a
+
+cumulativeMass :: (Ord a, Enum a, Num a, Fractional a) => IRV a -> a -> a
+cumulativeMass x p = last $ evaluateAtApoint p (makeCDF x)
 
 invert :: (Eq a, Ord a, Fractional a) => Distribution a -> Distribution a
 -- | Construct the inverse CDF by subtracting the CDF from 1
