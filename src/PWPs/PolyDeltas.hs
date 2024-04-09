@@ -114,7 +114,7 @@ instance (Eq a, Num a, Fractional a) => Calculable (PolyDelta a)
 
 boostPD :: (Eq a, Num a, Fractional a) => a -> PolyDelta a -> PolyDelta a
 boostPD x (P y) = plusPD (P y) (P (makePoly x))
-boostPD x (D y) = D y
+boostPD _ (D y) = D y
 boostPD x (H y z) = H (x + y) z
 
 instance (Eq a, Num a, Fractional a) => Evaluable a (PolyDelta a) 
