@@ -3,7 +3,7 @@
 {-|
 Module      : Convolutionclasses
 Description : Class definition for operators with testable properties
-Copyright   : (c) Peter Thompson, 2023
+Copyright   : (c) Peter Thompson, 2024
 License     : BSD-2-Clause
 Maintainer  : peter.thompson@pnsol.com
 Stability   : experimental
@@ -33,7 +33,7 @@ class Calculable a where
     integrate     :: a -> a
 
 class Evaluable a b where
-    evaluate :: a -> b -> a -- evaluate b at point a
+    evaluate :: a -> b -> [a] -- evaluate b at point a
     boost    :: a -> b -> b -- increment b by a
     scale    :: a -> b -> b -- scale b by a
 

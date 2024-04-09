@@ -195,13 +195,14 @@ integratePieces ps = Pieces (goInt 0 (disaggregate (getPieces ps)))
         goInt previousIntegral ((fp,lp,x):xs) = integratedPiece : goInt newIntegral xs
             where
                 integratedObject = integrate x
-                basepointValue   = evaluate fp integratedObject -- the integral at the start of the current interval
-                finalValue       = evaluate lp integratedObject -- the integral at the end of the current interval
+                -- evaluate always returns a non-empty list, so head and last are safe
+                basepointValue   = head $ evaluate fp integratedObject -- the integral at the start of the current interval
+                finalValue       = last $ evaluate lp integratedObject -- the integral at the end of the current interval
                 offset           = previousIntegral - basepointValue
                 integratedPiece  = makePiece (fp, boost offset integratedObject) -- correct the constant
                 newIntegral      = finalValue + offset
 
-evaluateAtApoint :: (Num a, Ord a, Evaluable a b) => a -> Pieces a b -> a
+evaluateAtApoint :: (Num a, Ord a, Evaluable a b) => a -> Pieces a b -> [a]
 {- |
 To evaluate a piecewise object at a point we need to find the interval the point is in, 
 (i.e. find i s.t. basepoint(i) <= p < basepoint(i+1)) and then evaluate the corresponding object.
@@ -210,12 +211,12 @@ or it may be before the first basepoint, in which case we evaluate the presumed 
 -}
 evaluateAtApoint point as
     | null pas                      = error "Empty piece list"
-    | point < basepoint (head pas)  = 0
+    | point < basepoint (head pas)  = [0]
     | otherwise                     = goEval point pas
     where
         pas                 = getPieces as
         goEval _ []         = error "Empty piece list"
-        goEval _ [_]        = piecesFinalValue as
+        goEval _ [_]        = evaluate (basepoint (last pas)) (object (last pas)) 
         goEval p (x1:x2:xs) = if (basepoint x1 <= p) && (p < basepoint x2)
                                 then evaluate p (object x1)
                                 else goEval p (x2:xs)
@@ -223,7 +224,7 @@ evaluateAtApoint point as
 -- | Find the value of the ultimate object at the last basepoint
 piecesFinalValue :: (Num a, Evaluable a b) => Pieces a b -> a
 piecesFinalValue (Pieces []) = error "Empty piece list"
-piecesFinalValue (Pieces xs) = evaluate (basepoint (last xs)) (object (last xs))
+piecesFinalValue (Pieces xs) = last $ evaluate (basepoint (last xs)) (object (last xs))
 
 instance (Num a, Eq a, Ord a, Evaluable a b) => Evaluable a (Pieces a b)
     where

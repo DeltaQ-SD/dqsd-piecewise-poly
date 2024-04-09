@@ -5,7 +5,7 @@
 {-|
 Module      : Deltas
 Description : Polynomials extended with delta functions
-Copyright   : (c) Peter Thompson, 2023
+Copyright   : (c) Peter Thompson, 2024
 License     : BSD-2-Clause
 Maintainer  : peter.thompson@pnsol.com
 Stability   : experimental
@@ -30,34 +30,46 @@ module PWPs.PolyDeltas
     , evaluatePD
     , convolvePolyDeltas
     , comparePDToZero
+    , polyDeltaRoot
 )
 where
 import PWPs.ConvolutionClasses
 import PWPs.SimplePolynomials as SP
 
 {- |
-Represents either a polynomial or a shifted dirac delta. A dirac delta contains the "size"; this is
-for probabilistic choice (and as such, it should be constrained between 0 and 1). Its position is
-stored as its basepoint when doing piecewise operations.
+A PolyDelta either a polynomial, a (shifted, scaled) Delta or a (shifted, scaled) Heavyside. 
+A delta has a mass, and a Heavyside has a starting value and a rise; 
+for probabilities all should be constrained between 0 and 1. 
+The position of both Ds and Hs is stored as its basepoint when doing piecewise operations.
 -} 
-data PolyDelta a = P (Poly a) | D a
+data PolyDelta a = P (Poly a) | D a | H a a 
     deriving (Eq, Show)
 
 instance Functor PolyDelta where
     fmap f (D x) = D (f x)
+    fmap f (H x y) = H (f x) (f y)
     fmap f (P x) = P (fmap f x)
 
 plusPD :: (Eq a, Fractional a) => PolyDelta a -> PolyDelta a -> PolyDelta a
+-- Polynomials have zero mass at a single point, so they are dominated by Ds and Hs
 plusPD (P x) (P y) = P (SP.plus x y)
-plusPD (P _) (D y) = D y
+plusPD (P _) (H x y) = H x y
+plusPD (P _) (D x) = D x
 plusPD (D x) (P _) = D x
-plusPD (D x) (D y) = D (x + y)
+plusPD (D x) (D x') = D (x + x') 
+plusPD (H x y) (P _) = H x y
+plusPD (H x y) (H x' y') = H (x + x') (y + y')
+plusPD _ _ = error "Cannot add Delta to Heavyside"
 
 timesPD :: (Eq a, Fractional a) => PolyDelta a -> PolyDelta a -> PolyDelta a
 timesPD (P x) (P y) = P (SP.times x y)
-timesPD (P _) (D y) = D y
+timesPD (P _) (D x) = D x
 timesPD (D x) (P _) = D x
-timesPD (D x) (D y) = D (x * y)
+timesPD (D x) (D x') = D (x * x')
+timesPD (P _) (H x y) = H x y
+timesPD (H x y) (P _) = H x y
+timesPD (H x y) (H x' y') = H (x * x') (y * y')
+timesPD _ _ = error "Cannot multiply Delta by Heavyside"
 
 minusPD :: Num a => PolyDelta a -> PolyDelta a
 minusPD = fmap negate
@@ -65,18 +77,22 @@ minusPD = fmap negate
 scalePD :: Num a => a -> PolyDelta a -> PolyDelta a
 scalePD x (P a) = P (SP.scalePoly x a)
 scalePD x (D y) = D (x * y)
+scalePD x (H y z) = H (x * y) (x * z)
 
-evaluatePD :: Num a => a -> PolyDelta a -> a
-evaluatePD point (P x) = SP.evaluatePoly point x
-evaluatePD _ (D x) = x -- this will make the piecewise integration work
+evaluatePD :: Num a => a -> PolyDelta a -> [a]
+evaluatePD point (P x) = [SP.evaluatePoly point x]
+evaluatePD _ (H x y) = [x, x + y] -- this will make the piecewise integration work
+evaluatePD _ (D x) = [x]
 
 integratePD :: (Eq a, Fractional a) => PolyDelta a -> PolyDelta a
 integratePD (P x) = P (SP.integrate x)
-integratePD (D x) = D x
+integratePD (D x) = H 0 x 
+integratePD (H _ _) = error "Integration of a Heavyside disallowed" -- would require more sophisticated joining of pieces
 
 differentiatePD :: (Eq a, Num a, Fractional a) => PolyDelta a -> PolyDelta a
 differentiatePD (P x) = P (SP.differentiate x)
-differentiatePD (D x) = D x
+differentiatePD (H _ y) = D y
+differentiatePD (D _) = error "Differentiation of Delta is illegal"
 
 instance (Eq a, Num a, Fractional a) => Num (PolyDelta a) where
     (+)           = plusPD
@@ -96,10 +112,15 @@ instance (Eq a, Num a, Fractional a) => Calculable (PolyDelta a)
         differentiate    = differentiatePD
         integrate        = integratePD 
 
+boostPD :: (Eq a, Num a, Fractional a) => a -> PolyDelta a -> PolyDelta a
+boostPD x (P y) = plusPD (P y) (P (makePoly x))
+boostPD x (D y) = D y
+boostPD x (H y z) = H (x + y) z
+
 instance (Eq a, Num a, Fractional a) => Evaluable a (PolyDelta a) 
     where
         evaluate  = evaluatePD
-        boost x y = plusPD y (P (makePoly x))
+        boost     = boostPD
         scale     = scalePD
 
 -- | Removes excess basepoints if the objects on either side are the same
@@ -127,6 +148,7 @@ convolvePolyDeltas (lf, uf, D f) (lg, ug, g)
     | lg + lf == 0 = [(0, scalePD f g), (ug, P zero)] -- degenerate case
     | otherwise    = aggregate [(0, P zero), (lg + lf, scalePD f g), (ug + lf, P zero)]
 convolvePolyDeltas (lf, uf, f) (lg, ug, D g) = convolvePolyDeltas (lg, ug, D g) (lf, uf, f)  -- commutative
+convolvePolyDeltas _ _ = error "Unexpected convolution case"
 
 instance (Num a, Fractional a, Ord a) => CompactConvolvable a (PolyDelta a)
     where
@@ -138,9 +160,14 @@ instance (Num a, Fractional a, Ord a) => CompactConvolvable a (PolyDelta a)
 comparePDToZero :: (Fractional a, Eq a, Ord a) => (a, a, PolyDelta a) -> Maybe Ordering
 comparePDToZero (lf, uf, P f) = SP.compareToZero (lf, uf, f) -- simple polynomial case
 comparePDToZero (lf, uf, D f) 
-    | lf /= uf      = error "Non-zero delta interval"
+    | lf /= uf      = error "Non-zero Delta interval"
     | f == 0        = Just EQ
     | f > 0         = Just GT
+    | otherwise     = Just LT
+comparePDToZero (lf, uf, H x y)
+    | lf /= uf      = error "Non-zero Heavyside interval"
+    | (x + y) == 0  = Just EQ
+    | (x + y) > 0   = Just GT
     | otherwise     = Just LT
 
 instance (Fractional a, Eq a, Ord a) => Comparable a (PolyDelta a)
@@ -148,14 +175,26 @@ instance (Fractional a, Eq a, Ord a) => Comparable a (PolyDelta a)
         compareZero = comparePDToZero
 
 {-|
-    We merge polynomials if they are equal. We merge deltas by adding them (not that we expect this case).
-    We merge a zero delta with a polynomial by discarding it. Other cases do not merge.
+    We merge polynomials if they are equal. We merge Ds/Hs by adding them (not that we expect this case).
+    We merge a zero D/H with a polynomial by discarding it. Other cases do not merge.
 -}
 instance (Num a, Eq a, Fractional a) => Mergeable (PolyDelta a)
     where
         mergeObject a b = case (a, b) of
             (P x, P y) -> if x == y then Just (P y) else Nothing
             (D x, P y) -> if x == 0 then Just (P y) else Nothing
+            (H _ x, P y) -> if x == 0 then Just (P y) else Nothing
             (D x, D y) -> Just (D (x + y))
-            (P _, D _) -> Nothing
+            (H x y, H x' y') -> Just (H (x + x') (y + y'))
+            (_, _) -> Nothing
         zeroObject = zero
+
+{-|
+    Given an interval containing a given value of a PolyDelta, find its location
+-}
+polyDeltaRoot :: (Ord a, Num a, Eq a, Fractional a) => a -> a -> (a, a) -> PolyDelta a -> a
+-- If we have a step, the interval is zero width so this is the root
+polyDeltaRoot _ _ (l, u) (H _ _) = if l /= u then error "Non-zero Heavyside interval" else l 
+-- otherwise we have a polynomial: subtract the value we are looking for so that we seek a zero crossing
+polyDeltaRoot e x (l, u) (P p) = findPolyRoot e (l, u) (p `plus` makePoly (-x))
+polyDeltaRoot _ _ _ (D _) = error "Can't take the root of a delta"
