@@ -33,7 +33,7 @@ instance DeltaQ (IRV Double) where
   support = (\(x,y) -> (x, Just y)) . PWP.support
 
   tangibleMass = PWP.probMass
-  
+
 
 
 instance DeltaQOps (IRV Double) where
