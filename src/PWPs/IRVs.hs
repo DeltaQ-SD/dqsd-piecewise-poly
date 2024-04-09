@@ -55,7 +55,6 @@ where
 import PWPs.Piecewise
 import PWPs.PolyDeltas
 import PWPs.SimplePolynomials (Poly (..), makePoly)
-import GHC.IO.Encoding.Failure (codingFailureModeSuffix)
 
 type Distribution a = Pieces a (PolyDelta a)
 
