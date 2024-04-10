@@ -2,11 +2,13 @@
 {-# LANGUAGE TypeFamilies, FlexibleInstances, MultiParamTypeClasses #-}
 
 module DeltaQ.PWPs
- ( DeltaQ(..)
+ (
+   IRV
+ , DeltaQ(..)
  , DeltaQOps(..)
---  , DeltaQ𝛩(..)
---  , DeltaQTimeout(..)
---  , DeltaQUniform(..)
+ , DeltaQ𝛩(..)
+ , DeltaQTimeout(..)
+ , DeltaQUniform(..)
  , shiftedHeaviside
  )
 where
@@ -34,7 +36,11 @@ instance DeltaQ (IRV Double) where
 
   tangibleMass = PWP.probMass
 
+  cumulativeMass = PWP.cumulativeMass
 
+  cumulativeMass' a b = Just $ PWP.cumulativeMass a b
+
+  centiles = flip PWP.centiles
 
 instance DeltaQOps (IRV Double) where
   choice = PWP.probChoice
@@ -48,27 +54,7 @@ instance DeltaQOps (IRV Double) where
   ltf = PWP.allToFinish
   nWayLtf = PWP.multiAtF
 
--- instance DeltaQ𝛩 (IRV Double)
-{-
-instance (Ord a, Num a, Enum a, Fractional a) => ImproperRandomVariable (IRV a) where
-    type DelayModel (IRV a) = a
-    type ProbabilityModel (IRV a) = a
+instance DeltaQ𝛩 (IRV Double) where
 
-    diracDelta = constructDelta
-    uniform0   = constructUniform
-
-    perfection = diracDelta 0
-    bottom     = zeroPDF
-
-    tangibleMass = probMass
-
-instance (Ord a, Num a, Enum a, Fractional a) => Convolvable (IRV a) where
-    (<+>) = (PWPs.IRVs.<+>)
-
-instance (Ord a, Num a, Enum a, Fractional a) => NonConcurrentCombination a (IRV a) where
-    weightedChoice = probChoice
-
-instance (Ord a, Num a, Enum a, Fractional a) => ConcurrentCombination (IRV a) where
-    allToFinish   = PWPs.IRVs.allToFinish
-    firstToFinish = PWPs.IRVs.firstToFinish
--}
+instance DeltaQUniform (IRV Double) where
+  uniform0 = PWP.constructUniform
