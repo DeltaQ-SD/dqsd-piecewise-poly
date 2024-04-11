@@ -91,7 +91,7 @@ integratePD (H _ _) = error "Integration of a Heaviside disallowed" -- would req
 
 differentiatePD :: (Eq a, Num a, Fractional a) => PolyDelta a -> PolyDelta a
 differentiatePD (P x) = P (SP.differentiate x)
-differentiatePD (H _ y) = D y
+differentiatePD (H x y) = D (y - x)
 differentiatePD (D _) = error "Differentiation of Delta is illegal"
 
 instance (Eq a, Num a, Fractional a) => Num (PolyDelta a) where
@@ -115,7 +115,7 @@ instance (Eq a, Num a, Fractional a) => Calculable (PolyDelta a)
 boostPD :: (Eq a, Num a, Fractional a) => a -> PolyDelta a -> PolyDelta a
 boostPD x (P y) = plusPD (P y) (P (makePoly x))
 boostPD _ (D y) = D y
-boostPD x (H y z) = H (x + y) z
+boostPD x (H y z) = H (x + y) (x + z)
 
 instance (Eq a, Num a, Fractional a) => Evaluable a (PolyDelta a) 
     where
