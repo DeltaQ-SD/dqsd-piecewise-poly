@@ -37,8 +37,8 @@ import PWPs.ConvolutionClasses
 import PWPs.SimplePolynomials as SP
 
 {- |
-A PolyDelta either a polynomial, a (shifted, scaled) Delta or a (shifted, scaled) Heavyside. 
-A delta has a mass, and a Heavyside has a starting value and a rise; 
+A PolyDelta either a polynomial, a (shifted, scaled) Delta or a (shifted, scaled) Heaviside. 
+A delta has a mass, and a Heaviside has a starting value and a rise; 
 for probabilities all should be constrained between 0 and 1. 
 The position of both Ds and Hs is stored as its basepoint when doing piecewise operations.
 -} 
@@ -59,7 +59,7 @@ plusPD (D x) (P _) = D x
 plusPD (D x) (D x') = D (x + x') 
 plusPD (H x y) (P _) = H x y
 plusPD (H x y) (H x' y') = H (x + x') (y + y')
-plusPD _ _ = error "Cannot add Delta to Heavyside"
+plusPD _ _ = error "Cannot add Delta to Heaviside"
 
 timesPD :: (Eq a, Fractional a) => PolyDelta a -> PolyDelta a -> PolyDelta a
 timesPD (P x) (P y) = P (SP.times x y)
@@ -69,7 +69,7 @@ timesPD (D x) (D x') = D (x * x')
 timesPD (P _) (H x y) = H x y
 timesPD (H x y) (P _) = H x y
 timesPD (H x y) (H x' y') = H (x * x') (y * y')
-timesPD _ _ = error "Cannot multiply Delta by Heavyside"
+timesPD _ _ = error "Cannot multiply Delta by Heaviside"
 
 minusPD :: Num a => PolyDelta a -> PolyDelta a
 minusPD = fmap negate
@@ -87,7 +87,7 @@ evaluatePD _ (D x) = [x]
 integratePD :: (Eq a, Fractional a) => PolyDelta a -> PolyDelta a
 integratePD (P x) = P (SP.integrate x)
 integratePD (D x) = H 0 x 
-integratePD (H _ _) = error "Integration of a Heavyside disallowed" -- would require more sophisticated joining of pieces
+integratePD (H _ _) = error "Integration of a Heaviside disallowed" -- would require more sophisticated joining of pieces
 
 differentiatePD :: (Eq a, Num a, Fractional a) => PolyDelta a -> PolyDelta a
 differentiatePD (P x) = P (SP.differentiate x)
@@ -165,7 +165,7 @@ comparePDToZero (lf, uf, D f)
     | f > 0         = Just GT
     | otherwise     = Just LT
 comparePDToZero (lf, uf, H x y)
-    | lf /= uf      = error "Non-zero Heavyside interval"
+    | lf /= uf      = error "Non-zero Heaviside interval"
     | (x + y) == 0  = Just EQ
     | (x + y) > 0   = Just GT
     | otherwise     = Just LT
@@ -194,7 +194,7 @@ instance (Num a, Eq a, Fractional a) => Mergeable (PolyDelta a)
 -}
 polyDeltaRoot :: (Ord a, Num a, Eq a, Fractional a) => a -> a -> (a, a) -> PolyDelta a -> a
 -- If we have a step, the interval is zero width so this is the root
-polyDeltaRoot _ _ (l, u) (H _ _) = if l /= u then error "Non-zero Heavyside interval" else l 
+polyDeltaRoot _ _ (l, u) (H _ _) = if l /= u then error "Non-zero Heaviside interval" else l 
 -- otherwise we have a polynomial: subtract the value we are looking for so that we seek a zero crossing
 polyDeltaRoot e x (l, u) (P p) = findPolyRoot e (l, u) (p `plus` makePoly (-x))
 polyDeltaRoot _ _ _ (D _) = error "Can't take the root of a delta"
