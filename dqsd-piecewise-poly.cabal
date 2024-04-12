@@ -20,7 +20,7 @@ name:               dqsd-piecewise-poly
 -- PVP summary:     +-+------- breaking API changes
 --                  | | +----- non-breaking API additions
 --                  | | | +--- code changes with no API change
-version:            2.1.0.0
+version:            3.0.0.0
 
 -- A short (one-line) description of the package.
 synopsis:           A piecewise polynomial implementation of dqsd-classes
