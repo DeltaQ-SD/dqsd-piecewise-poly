@@ -75,9 +75,9 @@ invert :: (Eq a, Ord a, Fractional a) => Distribution a -> Distribution a
 -- | Construct the inverse CDF by subtracting the CDF from 1
 invert = applyObject plus (P $ makePoly 1) . minus
 
-shiftIRV :: (Ord a, Enum a, Num a, Fractional a) => a -> IRV a -> IRV a
-shiftIRV s (PDF p) = PDF (shiftPiecewise s p)
-shiftIRV s (CDF p) = CDF (shiftPiecewise s p)
+shiftIRV :: (Ord a, Enum a, Num a, Fractional a, Num a) => a -> IRV a -> IRV a
+-- | Make a delta and convolve with it
+shiftIRV s x = PDF (makePieces [(0, P 0), (s, D 1), (s, P 0)] PWPs.Piecewise.<+> makePDF x)
 
 makePDF :: (Ord a, Enum a, Eq a, Fractional a, Num a) => IRV a -> Distribution a
 -- | Force an IRV into a PDF by differentiating if necessary
