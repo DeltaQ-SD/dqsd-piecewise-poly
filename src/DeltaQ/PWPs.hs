@@ -9,11 +9,16 @@ module DeltaQ.PWPs
  , DeltaQ𝛩(..)
  , DeltaQTimeout(..)
  , DeltaQUniform(..)
+ , DeltaQIntrospection(..)
+ , Slazard(..)
+ , DeltaQVisualisation(..)
  , shiftedHeaviside
  )
 where
 
 import           DeltaQ.Model.DeltaQ
+import           DeltaQ.Model.Introspection
+import           DeltaQ.Model.Utilities
 
 import           PWPs.IRVs (IRV)
 import qualified PWPs.IRVs as PWP
@@ -59,3 +64,8 @@ instance DeltaQ𝛩 (IRV Double) where
 
 instance DeltaQUniform (IRV Double) where
   uniform0 = PWP.constructUniform
+
+instance DeltaQVisualisation (IRV Double) where
+  asDiscreteCDF = flip PWP.displayCDF
+
+  asDiscretePDF irv n = (\x -> [Right x]) $ (PWP.displayPDF  n irv)
