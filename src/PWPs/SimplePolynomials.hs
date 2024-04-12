@@ -15,20 +15,21 @@ An empty list is not allowed: a zero polynomical must have at least one (zero) e
 module PWPs.SimplePolynomials
 (     Poly (..)
     , makePoly
-    , zero 
+    , zero
     , makeMonomial
     , shiftPolyUp
     , scalePoly
     , plus
     , times
     , minus
-    , PWPs.ConvolutionClasses.fromInteger 
+    , PWPs.ConvolutionClasses.fromInteger
     , integrate
     , differentiate
     , evaluatePoly
     , convolvePolys
     , compareToZero
     , findPolyRoot
+    , shiftPoly
 ) where
 
 import PWPs.ConvolutionClasses
@@ -37,7 +38,7 @@ newtype Poly a = Poly [a]
 
 makePoly :: a -> Poly a
 -- | turn a constant into a constant polynomial
-makePoly x = Poly [x] 
+makePoly x = Poly [x]
 zeroPoly :: Num a => Poly a
 zeroPoly = makePoly 0
 
@@ -46,7 +47,7 @@ degreePoly :: (Num a, Eq a) => Poly a -> Int
 -- degree of the zero polynomial to be negative
 degreePoly x = if trimPoly x == zeroPoly then -1 else length (trimPoly x) - 1
 
-trimPoly :: (Num a, Eq a) => Poly a -> Poly a 
+trimPoly :: (Num a, Eq a) => Poly a -> Poly a
 -- | remove top zeroes
 trimPoly (Poly as) = Poly (reverse $ goTrim $ reverse as)
     where
@@ -56,17 +57,17 @@ trimPoly (Poly as) = Poly (reverse $ goTrim $ reverse as)
 
 makeMonomial :: (Eq a, Num a) => Int -> a -> Poly a
 -- | put a coefficient in the nth place only
-makeMonomial n x = if x == 0 then zeroPoly else Poly (reverse (x:replicate n 0)) 
+makeMonomial n x = if x == 0 then zeroPoly else Poly (reverse (x:replicate n 0))
 
 shiftPolyUp :: (Eq a, Num a) => Poly a -> Poly a
 -- | effectively multiply the polynomial by x by shifting all the coefficients up one place.
-shiftPolyUp (Poly xs) 
+shiftPolyUp (Poly xs)
     | xs == [0] = Poly xs     -- don't shift up zero
-    | otherwise = Poly (0:xs) 
+    | otherwise = Poly (0:xs)
 
 scalePoly :: Num a => a -> Poly a -> Poly a
 -- | scale a polynomial by a constant: more efficient than multiplying by a constant polynomial
-scalePoly x (Poly xs) = Poly (map (*x) xs) 
+scalePoly x (Poly xs) = Poly (map (*x) xs)
 
 addPolys :: (Eq a, Num a) => Poly a -> Poly a -> Poly a
 {- |
@@ -114,7 +115,7 @@ instance (Eq a, Num a) => Num (Poly a) where
     signum            = undefined
     fromInteger n     = Poly [Prelude.fromInteger n]
 
-differentiatePoly :: Num a => Poly a -> Poly a 
+differentiatePoly :: Num a => Poly a -> Poly a
 -- | Simply use dx^n/dx = nx^(n-1)
 differentiatePoly (Poly [])     = error "Polynomial was empty"
 differentiatePoly (Poly [_])    = zeroPoly -- constant differentiates to zero
@@ -149,7 +150,7 @@ n `choose` k
 
 convolvePolys :: (Fractional a, Eq a, Ord a) => (a, a, Poly a) -> (a, a, Poly a) -> [(a, Poly a)]
 -- | Take two polynomials f and g defined on bounded intervals and produce three contiguous pieces as a result
-convolvePolys (lf, uf, Poly fs) (lg, ug, Poly gs) 
+convolvePolys (lf, uf, Poly fs) (lg, ug, Poly gs)
     | (lf <0) || (lg < 0) = error "Interval bounds cannot be negative"
     | (lf >= uf) || (lg >= ug) = error "Invalid interval" -- upper bounds should be strictly greater than lower bounds
     | (ug - lg) > (uf - lf) = convolvePolys (lg, ug, Poly gs) (lf, uf, Poly fs) -- if g is wider than f, swap the terms
@@ -160,11 +161,11 @@ convolvePolys (lf, uf, Poly fs) (lg, ug, Poly gs)
             sumSeries k mulFactor poly = foldr (\n acc -> acc `plus` (mulFactor n `scalePoly` poly n)) zero [0..k]
 
             -- the inner summation has a similar structure each time
-            innerSum m n term k = sumSeries (m+k+1) innerMult (\j -> makeMonomial (m+n+1-j) (term j)) 
+            innerSum m n term k = sumSeries (m+k+1) innerMult (\j -> makeMonomial (m+n+1-j) (term j))
                 where
                     innerMult j  = fromIntegral (if even j then (m+k+1) `choose` j else negate ((m+k+1) `choose` j))
 
-            convolemakeMonomials m n innerTerm = sumSeries n (multiplier m n) (innerTerm m n) 
+            convolemakeMonomials m n innerTerm = sumSeries n (multiplier m n) (innerTerm m n)
                 where
                     multiplier p q k = fromIntegral (if even k then q `choose` k else negate (q `choose` k))/fromIntegral (p+k+1)
 
@@ -187,6 +188,17 @@ convolvePolys (lf, uf, Poly fs) (lg, ug, Poly gs)
             trimTerms (x:y:xs) = if fst x == fst y then trimTerms (y:xs) else x:trimTerms (y:xs)
 
         in trimTerms [(0, zero), (lf + lg, firstTerm), (lf + ug, secondTerm), (uf + lg, thirdTerm), (uf + ug, zero)]
+
+shiftPoly :: (Fractional a, Eq a, Num a) => a -> Poly a -> Poly a
+-- | Shift a polynomial p(x) -> p(x - y) by summing binomial expansions of each term
+shiftPoly s (Poly ps) = foldr plus zero [b `scalePoly` binomialExpansion n s | (n,b) <- zip [0..] ps]
+    where
+        -- the binomial expansion of each power of x is a new polynomial whose coefficients are the product of
+        -- a binomial coefficient and the shift value raised to a reducing power
+        binomialTerm :: Num a => a -> Int -> Int -> a
+        binomialTerm y n k = fromIntegral (n `choose` k) * (-y)^(n-k)
+        binomialExpansion :: Num a => Int -> a -> Poly a
+        binomialExpansion n y = Poly (map (binomialTerm y n) [0..n])
 
 {- |
 We use Sturm's Theorem to count the number of roots of a polynomial in a given interval.
@@ -252,7 +264,7 @@ Pseudocode:
     end
 -}
 euclidianDivision (pa, pb) = if pb == zeroPoly then error "Division by zero polynomial" else goDivide (zeroPoly, pa)
-    where 
+    where
         degB = degreePoly pb
         leadingCoefficient :: Poly a -> a -- coefficient of the highest power term of the poly
         leadingCoefficient (Poly x) = last x
@@ -268,11 +280,11 @@ compareToZero :: (Fractional a, Eq a, Ord a) => (a, a, Poly a) -> Maybe Ordering
 -}
 compareToZero (l, u, p)
     | l >= u                        = error "Invalid interval"
-    | p == zeroPoly                 = Just EQ 
+    | p == zeroPoly                 = Just EQ
     | lower * upper < 0             = Nothing -- quick test to eliminate simple cases
     | countPolyRoots (l, u, p) > 0  = Nothing -- polynomial crosses zero
     -- since the polynomial has no roots, the comparison is detmined by the boundary values
-    | lower == 0 || upper == 0      = Just (compare upper lower) 
+    | lower == 0 || upper == 0      = Just (compare upper lower)
     | lower > 0                     = Just GT -- upper must also be > 0 due to the lack of roots
     | otherwise                     = Just LT -- upper and lower both < 0 due to the lack of roots
     where
@@ -291,7 +303,7 @@ that are evaluated at each iteration, using the alternative formulation of Halle
 new = x - (px/p'x)/(1 - px/p'x * p''x/2p'x)
 Halley will fail if degree p <=1 so treat these as speecial cases
 -}
-findPolyRoot precision (l, u) p 
+findPolyRoot precision (l, u) p
     | degp <= 0 = x0 -- really no root, but use this to make a total function
     | degp == 1 = (-ps!!0)/ps!!1 -- p0 + p1x = 0 => x = -p0/p1
     | otherwise = halley x0
@@ -309,4 +321,3 @@ findPolyRoot precision (l, u) p
             halley xn = if abs (xnp1 - xn) < precision then xnp1 else halley xnp1
                 where
                     xnp1 = new xn
-        
