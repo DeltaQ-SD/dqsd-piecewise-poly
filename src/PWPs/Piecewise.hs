@@ -44,7 +44,6 @@ module PWPs.Piecewise
     , comparePW
     , piecewiseSupport
     , applyObject
-    , shiftPiecewise
 ) where
 
 import PWPs.ConvolutionClasses
@@ -162,12 +161,6 @@ makePieces xs
     | length xs == 1                     = Pieces [makePiece (head xs)] -- deal with the single element list case
     | not (monotonic (map fst xs))       = error "Basepoints were not in order"
     | otherwise                          = Pieces (map makePiece xs)
-
-shiftPiecewise :: (Num a, Ord a, Calculable b) => a -> Pieces a b -> Pieces a b
-shiftPiecewise shift xs = if shift <= 0 then error "Invalid shift value" 
-                          else Pieces (makePiece (0, zero) : map (shiftPiece shift) (getPieces xs))
-    where
-        shiftPiece s p = makePiece (basepoint p + s, object p)
 
 instance (Num a, Eq a, Ord a, Calculable b, Mergeable b, Evaluable a b) => Calculable (Pieces a b)
     where

@@ -141,13 +141,19 @@ argument (whichever it is) along by this amount. Need to ensure there is still a
 convolvePolyDeltas (lf, uf, P f) (lg, ug, P g) = 
     if (uf <= lf) || (ug <= lg) then error "Invalid polynomial interval width"
                                 else aggregate $ map (\(x, p) -> (x, P p)) (convolvePolys (lf, uf, f) (lg, ug, g))
-convolvePolyDeltas (lf, uf, D f) (lg, ug, g) 
+convolvePolyDeltas (lf, uf, D f) (lg, ug, P g) 
     | lf /= uf     = error "Non-zero delta interval"
     | ug < lg      = error "Negative interval width"
     | f == 0       = [(0, P zero)] -- convolving with a zero-sized delta gives nothing
-    | lg + lf == 0 = [(0, scalePD f g), (ug, P zero)] -- degenerate case
-    | otherwise    = aggregate [(0, P zero), (lg + lf, scalePD f g), (ug + lf, P zero)]
-convolvePolyDeltas (lf, uf, f) (lg, ug, D g) = convolvePolyDeltas (lg, ug, D g) (lf, uf, f)  -- commutative
+    | lg + lf == 0 = [(0, scalePD f (P g)), (ug, P zero)] -- degenerate case of delta at zero
+    -- Shift the poly by the basepoint of the delta and insert a new initial zero interval
+    | otherwise    = aggregate [(0, P zero), (lg + lf, scalePD f (P (shiftPoly lf g))), (ug + lf, P zero)]
+convolvePolyDeltas (lf, uf, P f) (lg, ug, D g) = convolvePolyDeltas (lg, ug, D g) (lf, uf, P f)  -- commutative
+convolvePolyDeltas (lf, uf, D f) (lg, ug, D g) -- both deltas
+    | lf /= uf || lg /= ug  = error "Non-zero delta interval"
+    | f * g == 0            = [(0, P zero)] -- convolving with a zero-sized delta gives nothing
+    | lg + lf == 0          = [(0, D (f * g)), (0, P zero)] -- degenerate case of deltas at zero
+-- convolving with Heavisides is forbidden
 convolvePolyDeltas _ _ = error "Unexpected convolution case"
 
 instance (Num a, Fractional a, Ord a) => CompactConvolvable a (PolyDelta a)
