@@ -40,9 +40,9 @@ module PWPs.IRVs
   , multiWeightedChoice
   , (PWPs.IRVs.<+>)
   , probMass
-  , invert
-  , displayCDF
-  , displayPDF
+  , invertCDF
+  , asDiscreteCDF
+  , asDiscretePDF
   , compareIRVs
   , support
   , top
@@ -74,6 +74,9 @@ cumulativeMass x p = last $ evaluateAtApoint p (makeCDF x)
 invert :: (Eq a, Ord a, Fractional a) => Distribution a -> Distribution a
 -- | Construct the inverse CDF by subtracting the CDF from 1
 invert = applyObject plus (P $ makePoly 1) . minus
+
+invertCDF :: (Eq a, Ord a, Fractional a, Enum a) => IRV a -> IRV a
+invertCDF x = CDF (invert $ makeCDF x)
 
 shiftIRV :: (Ord a, Enum a, Num a, Fractional a, Num a) => a -> IRV a -> IRV a
 -- | Make a delta and convolve with it
@@ -148,13 +151,15 @@ constructLinearCDF xs
             -- each polynomial starts at the current probability and linearly slopes up to the next one
             slope x y z = Poly [x, y/z]
 
-displayCDF :: (Ord a, Enum a, Eq a, Fractional a, Num a) => Int -> IRV a -> [(a, a)]
+asDiscreteCDF :: (Ord a, Enum a, Eq a, Fractional a, Num a) => IRV a -> Int -> [(a, a)]
 -- | Turn an IRV into a list of point pairs corresponding to the CDF, with a given minimum number of points
-displayCDF n x = if n <= 0 then error "Invalid number of points" else decomposeIRV n (makeCDF x)
+asDiscreteCDF x n = if n <= 0 then error "Invalid number of points" else decomposeIRV n (makeCDF x)
 
-displayPDF :: (Ord a, Enum a, Eq a, Fractional a, Num a) => Int -> IRV a -> [(a, a)]
--- | Turn an IRV into a list of point pairs corresponding to the PDF, with a given minimum number of points
-displayPDF n x = if n <= 0 then error "Invalid number of points" else decomposeIRV n (makePDF x)
+asDiscretePDF :: (Ord a, Enum a, Eq a, Fractional a, Num a) => IRV a -> Int -> [Either (a,a) [(a, a)]]
+-- | Return a sequence of (Left) Impulse Probablity mass (equivalent to the
+--   integral of the Heaviside function at that point) or (Right) a sequence
+--   of Time and Probability Density. The sequence is monotonitcally increasing in Time.
+asDiscretePDF x n = if n <= 0 then error "Invalid number of points" else [Right (decomposeIRV n (makePDF x))]
 
 decomposeIRV :: (Ord a, Num a, Fractional a) => Int -> Distribution a -> [(a, a)]
 decomposeIRV numPoints ys = zip basepoints values
