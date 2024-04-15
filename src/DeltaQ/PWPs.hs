@@ -60,7 +60,7 @@ instance DeltaQOps (IRV Double) where
   nWayLtf = PWP.multiAtF
 
 instance DeltaQ𝛩 (IRV Double) where
- delay = flip PWP.shiftIRV
+  shifted𝛩 = PWP.constructDelta
 
 instance DeltaQUniform (IRV Double) where
   uniform0 = PWP.constructUniform
