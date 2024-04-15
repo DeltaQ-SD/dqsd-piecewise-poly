@@ -30,6 +30,7 @@ module PWPs.SimplePolynomials
     , compareToZero
     , findPolyRoot
     , shiftPoly
+    , displayPoly
 ) where
 
 import PWPs.ConvolutionClasses
@@ -200,14 +201,13 @@ shiftPoly s (Poly ps) = foldr plus zero [b `scalePoly` binomialExpansion n s | (
         binomialExpansion :: Num a => Int -> a -> Poly a
         binomialExpansion n y = Poly (map (binomialTerm y n) [0..n])
 
-displayPoly :: Poly a -> (a, a) -> Int -> [(a, a)]
--- | Create a given number n of (x, y) values uniformly spaced over a range (l, u)
--- First point will be at the base of the range, last point just before the end, so that successive intervals
--- do not repeat a point
-displayPoly p (l, u) n = map ((flip evaluatePoly) p) points
+displayPoly :: (Ord a, Eq a, Num a) => Poly a -> (a, a) -> a -> [(a, a)]
+-- | Create a given uniform spacing s over a range (l, u) return a list of (x, y) values of poly p over that range
+-- First point will be at the base of the range, and then we increment the bottom of the interval by s
+-- until it reaches the top of the interval
+displayPoly p (l, u) s = reverse $ goDisplay l 
     where
-        -- we want n points unifromly spaced over (l,u)
-        spacing = (u - l)/(Prelude.fromIntegral n)
+        goDisplay x = if x >= u then [] else (x, evaluatePoly x p) : goDisplay (x + s)
 
 {- |
 We use Sturm's Theorem to count the number of roots of a polynomial in a given interval.
@@ -312,9 +312,9 @@ Halley will fail if degree p <=1 so treat these as speecial cases
 -}
 findPolyRoot precision (l, u) p
     | degp < 0  = Just x0 -- the whokle interval is a root, so return the basepoint
-    | degp = 0  = Nothing -- non-zeo constant so no root present
-    | degp == 1 = Just (-head ps)/last ps -- p0 + p1x = 0 => x = -p0/p1
-    | otherwise = Just halley x0
+    | degp == 0 = Nothing -- non-zeo constant so no root present
+    | degp == 1 = Just ((-head ps)/(last ps)) -- p0 + p1x = 0 => x = -p0/p1
+    | otherwise = Just (halley x0)
         where
             Poly ps = p
             degp    = degreePoly p

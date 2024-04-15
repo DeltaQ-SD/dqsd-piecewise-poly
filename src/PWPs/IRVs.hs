@@ -80,7 +80,7 @@ invertCDF x = CDF (invert $ makeCDF x)
 
 shiftIRV :: (Ord a, Enum a, Num a, Fractional a, Num a) => a -> IRV a -> IRV a
 -- | Make a delta and convolve with it
-shiftIRV s x = constructDelta s PWPs.Piecewise.<+> makePDF x
+shiftIRV s x = constructDelta s PWPs.IRVs.<+> PDF (makePDF x)
 
 makePDF :: (Ord a, Enum a, Eq a, Fractional a, Num a) => IRV a -> Distribution a
 -- | Force an IRV into a PDF by differentiating if necessary
@@ -158,8 +158,11 @@ asDiscreteCDF x n = if n <= 0 then error "Invalid number of points" else decompo
 asDiscretePDF :: (Ord a, Enum a, Eq a, Fractional a, Num a) => IRV a -> Int -> [Either (a,a) [(a, a)]]
 -- | Return a sequence of (Left) Impulse Probablity mass (equivalent to the
 --   integral of the Heaviside function at that point) or (Right) a sequence
---   of Time and Probability Density. The sequence is monotonitcally increasing in Time.
-asDiscretePDF x n = if n <= 0 then error "Invalid number of points" else [Right (decomposeIRV n (makePDF x))]
+--   of Time and Probability Density. The sequence is monotonically increasing in Time.
+asDiscretePDF x n = if n <= 0 then error "Invalid number of points"
+                              else displayPolyDeltaIntervals (makePDF x) spacing
+    where
+        spacing = (snd (support x) - fst (support x)) / Prelude.fromIntegral n
 
 decomposeIRV :: (Ord a, Num a, Fractional a) => Int -> Distribution a -> [(a, a)]
 decomposeIRV numPoints ys = zip basepoints values
@@ -267,13 +270,13 @@ centiles probabilities dQ
             -- consume the list of probabilities and build the list of centiles
             findCentiles [] = []
             findCentiles (x:xs) = if x > probMass dQ then Nothing : findCentiles xs
-                                   else (findRoot x intervals) : findCentiles xs
+                                   else findRoot x intervals : findCentiles xs
             -- Work along cumulative distribution until we find the interval containing the value,  
             -- then get the root of the polydelta
             -- findRoot :: (Ord a, Enum a, Eq a, Fractional a, Num a) => a -> [Piece a (PolyDelta a)] -> a
             findRoot _ [] = error "Empty distribution"
             -- if we have only one piece its object must be constant, so report its basepoint as the root
-            findRoot _ [final] = Just basepoint final
+            findRoot _ [final] = Just (basepoint final)
             -- hereon we must have at least two pieces: if the value is in the range of the current interval,
             -- find the root, otherwise move on to the next piece
             findRoot p (next:rest) = if inInterval p next (head rest)

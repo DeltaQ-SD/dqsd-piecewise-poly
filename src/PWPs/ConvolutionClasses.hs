@@ -20,6 +20,7 @@ module PWPs.ConvolutionClasses
   , CompactConvolvable (..)
   , Comparable (..)
   , Mergeable (..)
+  , Displayable (..)
 )
 where
 
@@ -57,6 +58,9 @@ class Mergeable a where
     mergeObject :: a -> a -> Maybe a
     zeroObject  :: a
 
+class Displayable a b where
+    displayObject :: a -> (a, a, b) -> Either (a,a) [(a, a)]
+    
 {- |
     Laws:
     Usual stuff with +, *, -
