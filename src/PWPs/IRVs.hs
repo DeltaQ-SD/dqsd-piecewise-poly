@@ -80,7 +80,7 @@ invertCDF x = CDF (invert $ makeCDF x)
 
 shiftIRV :: (Ord a, Enum a, Num a, Fractional a, Num a) => a -> IRV a -> IRV a
 -- | Make a delta and convolve with it
-shiftIRV s x = PDF (makePieces [(0, P 0), (s, D 1), (s, P 0)] PWPs.Piecewise.<+> makePDF x)
+shiftIRV s x = constructDelta s PWPs.Piecewise.<+> makePDF x
 
 makePDF :: (Ord a, Enum a, Eq a, Fractional a, Num a) => IRV a -> Distribution a
 -- | Force an IRV into a PDF by differentiating if necessary
