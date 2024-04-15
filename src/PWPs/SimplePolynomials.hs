@@ -200,6 +200,12 @@ shiftPoly s (Poly ps) = foldr plus zero [b `scalePoly` binomialExpansion n s | (
         binomialExpansion :: Num a => Int -> a -> Poly a
         binomialExpansion n y = Poly (map (binomialTerm y n) [0..n])
 
+{-displayPoly :: Poly a -> (a, a) -> Int -> [(a, a)]
+-- | Create a sequence of (x, y) values of a given number uniformly spaced over a range
+displayPoly p (l, u) n = map ((flip evaluatePoly) p) points
+    where
+        -- we want n points unifromly spaced over (l,u)
+        spacing = (u - l)/(Prelude.fromIntegral n)-}
 {- |
 We use Sturm's Theorem to count the number of roots of a polynomial in a given interval.
 (See https://en.wikipedia.org/wiki/Sturm%27s_theorem)
