@@ -66,6 +66,6 @@ instance DeltaQUniform (IRV Double) where
   uniform0 = PWP.constructUniform
 
 instance DeltaQVisualisation (IRV Double) where
-  asDiscreteCDF = flip PWP.displayCDF
+  asDiscreteCDF = PWP.asDiscreteCDF
 
-  asDiscretePDF irv n = (\x -> [Right x]) $ (PWP.displayPDF  n irv)
+  asDiscretePDF = PWP.asDiscretePDF
