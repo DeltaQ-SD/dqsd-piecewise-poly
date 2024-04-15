@@ -267,13 +267,13 @@ centiles probabilities dQ
             -- consume the list of probabilities and build the list of centiles
             findCentiles [] = []
             findCentiles (x:xs) = if x > probMass dQ then Nothing : findCentiles xs
-                                   else Just (findRoot x intervals) : findCentiles xs
+                                   else (findRoot x intervals) : findCentiles xs
             -- Work along cumulative distribution until we find the interval containing the value,  
             -- then get the root of the polydelta
             -- findRoot :: (Ord a, Enum a, Eq a, Fractional a, Num a) => a -> [Piece a (PolyDelta a)] -> a
             findRoot _ [] = error "Empty distribution"
             -- if we have only one piece its object must be constant, so report its basepoint as the root
-            findRoot _ [final] = basepoint final
+            findRoot _ [final] = Just basepoint final
             -- hereon we must have at least two pieces: if the value is in the range of the current interval,
             -- find the root, otherwise move on to the next piece
             findRoot p (next:rest) = if inInterval p next (head rest)
