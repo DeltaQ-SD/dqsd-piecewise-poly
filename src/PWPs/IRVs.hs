@@ -257,9 +257,9 @@ centiles :: (Ord a, Enum a, Eq a, Fractional a, Num a) => [a] -> IRV a -> [Maybe
 -- | Given a list of probabiity values, return the times at which that value is reached; 
 -- if it is never reached, return Nothing
 centiles probabilities dQ
-    | null probabilities                    = error "Empty probability list"
-    | not (monotonicFromZero probabilities) = error "Probabilities not monotonic"
-    | last probabilities > 1                = error "Probability exceeds one"
+    | null probabilities            = error "Empty probability list"
+    | not (monotonic probabilities) = error "Probabilities not monotonic"
+    | last probabilities > 1        = error "Probability exceeds one"
     -- deal with degenerate case where the support has zero width: all centiles the same value
     | otherwise = if eps == 0 then replicate (length probabilities) (Just $ fst (support dQ))
                               else reverse $ findCentiles probabilities
