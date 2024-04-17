@@ -265,7 +265,7 @@ centiles probabilities dQ
                               else findCentiles probabilities
         where
             intervals = getPieces $ makeCDF dQ
-            eps = fst (support dQ) - snd (support dQ) / 1000 -- arbitrary parameter!
+            eps = snd (support dQ) - fst (support dQ) / 1000 -- arbitrary parameter!
             -- findCentiles :: [a] -> [Maybe a]
             -- consume the list of probabilities and build the list of centiles
             findCentiles [] = []
