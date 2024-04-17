@@ -198,9 +198,21 @@ instance (Num a, Eq a, Fractional a) => Mergeable (PolyDelta a)
 {-|
     Given an interval containing a given value of a PolyDelta, find its location
 -}
-polyDeltaRoot :: (Ord a, Num a, Eq a, Fractional a) => a -> a -> (a, a) -> PolyDelta a -> a
+polyDeltaRoot :: (Ord a, Num a, Eq a, Fractional a) => a -> a -> (a, a) -> PolyDelta a -> Maybe a
 -- If we have a step, the interval is zero width so this is the root
-polyDeltaRoot _ _ (l, u) (H _ _) = if l /= u then error "Non-zero Heaviside interval" else l 
+polyDeltaRoot _ _ (l, u) (H _ _) = if l /= u then error "Non-zero Heaviside interval" else Just l 
 -- otherwise we have a polynomial: subtract the value we are looking for so that we seek a zero crossing
 polyDeltaRoot e x (l, u) (P p) = findPolyRoot e (l, u) (p `plus` makePoly (-x))
 polyDeltaRoot _ _ _ (D _) = error "Can't take the root of a delta"
+
+displayPolyDelta :: (Ord a, Num a, Eq a, Fractional a) => a -> (a, a, PolyDelta a) -> Either (a,a) [(a, a)]
+displayPolyDelta _ (l, u, D x)   = if l /= u then error "Non-zero delta interval"
+                                    else Left (l, x)
+displayPolyDelta s (l, u, P p)   = if l >= u then error "Invalid polynomial interval"
+                                    else Right (displayPoly p (l, u) s)
+displayPolyDelta _ (l, u, H x y) = if l /= u then error "Non-zero heaviside interval"
+                                    else Left (l, y - x)                                
+
+instance (Ord a, Num a, Eq a, Fractional a) => Displayable a (PolyDelta a)
+    where
+        displayObject = displayPolyDelta

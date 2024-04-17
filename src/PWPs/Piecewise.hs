@@ -44,6 +44,7 @@ module PWPs.Piecewise
     , comparePW
     , piecewiseSupport
     , applyObject
+    , displayPolyDeltaIntervals
 ) where
 
 import PWPs.ConvolutionClasses
@@ -249,6 +250,9 @@ disaggregate :: Num a => [Piece a o] -> [(a, a, o)]
 disaggregate [] = error "Empty piece list"
 disaggregate [x] = [(basepoint x, 2 * basepoint x, object x)] -- turn the last piece into an 'infinite' interval
 disaggregate (x:xs@(x':_)) = (basepoint x, basepoint x', object x) : disaggregate xs
+
+displayPolyDeltaIntervals :: (Ord a, Enum a, Eq a, Fractional a, Num a, Displayable a b) => Pieces a b -> a -> [Either (a,a) [(a, a)]] 
+displayPolyDeltaIntervals as spacing = map (displayObject spacing) $ disaggregate (getPieces as)
 
 (><) :: (Eq a, Num a, Evaluable a b) => a -> Pieces a b -> Pieces a b
 -- | multiply by a constant piecewise

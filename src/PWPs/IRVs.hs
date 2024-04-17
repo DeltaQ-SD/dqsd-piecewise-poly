@@ -80,7 +80,7 @@ invertCDF x = CDF (invert $ makeCDF x)
 
 shiftIRV :: (Ord a, Enum a, Num a, Fractional a, Num a) => a -> IRV a -> IRV a
 -- | Make a delta and convolve with it
-shiftIRV s x = PDF (makePieces [(0, P 0), (s, D 1), (s, P 0)] PWPs.Piecewise.<+> makePDF x)
+shiftIRV s x = constructDelta s PWPs.IRVs.<+> PDF (makePDF x)
 
 makePDF :: (Ord a, Enum a, Eq a, Fractional a, Num a) => IRV a -> Distribution a
 -- | Force an IRV into a PDF by differentiating if necessary
@@ -158,8 +158,11 @@ asDiscreteCDF x n = if n <= 0 then error "Invalid number of points" else decompo
 asDiscretePDF :: (Ord a, Enum a, Eq a, Fractional a, Num a) => IRV a -> Int -> [Either (a,a) [(a, a)]]
 -- | Return a sequence of (Left) Impulse Probablity mass (equivalent to the
 --   integral of the Heaviside function at that point) or (Right) a sequence
---   of Time and Probability Density. The sequence is monotonitcally increasing in Time.
-asDiscretePDF x n = if n <= 0 then error "Invalid number of points" else [Right (decomposeIRV n (makePDF x))]
+--   of Time and Probability Density. The sequence is monotonically increasing in Time.
+asDiscretePDF x n = if n <= 0 then error "Invalid number of points"
+                              else displayPolyDeltaIntervals (makePDF x) spacing
+    where
+        spacing = (snd (support x) - fst (support x)) / Prelude.fromIntegral n
 
 decomposeIRV :: (Ord a, Num a, Fractional a) => Int -> Distribution a -> [(a, a)]
 decomposeIRV numPoints ys = zip basepoints values
@@ -254,12 +257,12 @@ centiles :: (Ord a, Enum a, Eq a, Fractional a, Num a) => [a] -> IRV a -> [Maybe
 -- | Given a list of probabiity values, return the times at which that value is reached; 
 -- if it is never reached, return Nothing
 centiles probabilities dQ
-    | null probabilities                    = error "Empty probability list"
-    | not (monotonicFromZero probabilities) = error "Probabilities not monotonic"
-    | last probabilities > 1                = error "Probability exceeds one"
+    | null probabilities            = error "Empty probability list"
+    | not (monotonic probabilities) = error "Probabilities not monotonic"
+    | last probabilities > 1        = error "Probability exceeds one"
     -- deal with degenerate case where the support has zero width: all centiles the same value
     | otherwise = if eps == 0 then replicate (length probabilities) (Just $ fst (support dQ))
-                              else reverse $ findCentiles probabilities
+                              else findCentiles probabilities
         where
             intervals = getPieces $ makeCDF dQ
             eps = fst (support dQ) - snd (support dQ) / 1000 -- arbitrary parameter!
@@ -267,13 +270,13 @@ centiles probabilities dQ
             -- consume the list of probabilities and build the list of centiles
             findCentiles [] = []
             findCentiles (x:xs) = if x > probMass dQ then Nothing : findCentiles xs
-                                   else Just (findRoot x intervals) : findCentiles xs
+                                   else findRoot x intervals : findCentiles xs
             -- Work along cumulative distribution until we find the interval containing the value,  
             -- then get the root of the polydelta
             -- findRoot :: (Ord a, Enum a, Eq a, Fractional a, Num a) => a -> [Piece a (PolyDelta a)] -> a
             findRoot _ [] = error "Empty distribution"
             -- if we have only one piece its object must be constant, so report its basepoint as the root
-            findRoot _ [final] = basepoint final
+            findRoot _ [final] = Just (basepoint final)
             -- hereon we must have at least two pieces: if the value is in the range of the current interval,
             -- find the root, otherwise move on to the next piece
             findRoot p (next:rest) = if inInterval p next (head rest)

@@ -30,6 +30,7 @@ module PWPs.SimplePolynomials
     , compareToZero
     , findPolyRoot
     , shiftPoly
+    , displayPoly
 ) where
 
 import PWPs.ConvolutionClasses
@@ -200,12 +201,14 @@ shiftPoly s (Poly ps) = foldr plus zero [b `scalePoly` binomialExpansion n s | (
         binomialExpansion :: Num a => Int -> a -> Poly a
         binomialExpansion n y = Poly (map (binomialTerm y n) [0..n])
 
-{-displayPoly :: Poly a -> (a, a) -> Int -> [(a, a)]
--- | Create a sequence of (x, y) values of a given number uniformly spaced over a range
-displayPoly p (l, u) n = map ((flip evaluatePoly) p) points
+displayPoly :: (Ord a, Eq a, Num a) => Poly a -> (a, a) -> a -> [(a, a)]
+-- | Create a given uniform spacing s over a range (l, u) return a list of (x, y) values of poly p over that range
+-- First point will be at the base of the range, and then we increment the bottom of the interval by s
+-- until it reaches the top of the interval
+displayPoly p (l, u) s = reverse $ goDisplay l 
     where
-        -- we want n points unifromly spaced over (l,u)
-        spacing = (u - l)/(Prelude.fromIntegral n)-}
+        goDisplay x = if x >= u then [] else (x, evaluatePoly x p) : goDisplay (x + s)
+
 {- |
 We use Sturm's Theorem to count the number of roots of a polynomial in a given interval.
 (See https://en.wikipedia.org/wiki/Sturm%27s_theorem)
@@ -297,33 +300,33 @@ compareToZero (l, u, p)
         lower = evaluatePoly l p
         upper = evaluatePoly u p
 
-findPolyRoot :: (Fractional a, Eq a, Num a, Ord a) => a -> (a, a) -> Poly a -> a
+findPolyRoot :: (Fractional a, Eq a, Num a, Ord a) => a -> (a, a) -> Poly a -> Maybe a
 {-| 
-This is only called when there is a root in the given interval, so we simply have to find it.
+This is only called when there is presumed to be a root in the given interval, so we simply have to find it.
 Since we can differentiate a polynomial we can use one of Householder's Methods
 such as Halley's Method https://www.wikiwand.com/en/Halley's_method
-We can take he middle of the interval as our initial guess. 
-We stop when the difference between successive approximations is below the given precision.
 This might be optimised by using Euclidian Division to reduce the order of the polynomials
 that are evaluated at each iteration, using the alternative formulation of Halley's Method:
 new = x - (px/p'x)/(1 - px/p'x * p''x/2p'x)
 Halley will fail if degree p <=1 so treat these as speecial cases
 -}
 findPolyRoot precision (l, u) p
-    | degp <= 0 = x0 -- really no root, but use this to make a total function
-    | degp == 1 = (-ps!!0)/ps!!1 -- p0 + p1x = 0 => x = -p0/p1
-    | otherwise = halley x0
+    | degp < 0  = Just x0 -- the whokle interval is a root, so return the basepoint
+    | degp == 0 = Nothing -- non-zeo constant so no root present
+    | degp == 1 = Just ((-head ps)/(last ps)) -- p0 + p1x = 0 => x = -p0/p1
+    | otherwise = Just (halley x0)
         where
             Poly ps = p
-            degp = degreePoly p
-            p'  = differentiate p
-            p'' = differentiate p'
-            x0  = (u - l) /2
-            new x = x - (2 * px * p'x) / (2 * p'x * p'x - px * p''x)
+            degp    = degreePoly p
+            p'      = differentiate p
+            p''     = differentiate p'
+            x0      = (u - l) /2 -- take the middle of the interval as our initial guess
+            new x   = x - (2 * px * p'x) / (2 * p'x * p'x - px * p''x)
                 where
                     px   = evaluatePoly x p
                     p'x  = evaluatePoly x p'
                     p''x = evaluatePoly x p''
+            -- Stop when the difference between successive approximations is less than the required precision.
             halley xn = if abs (xnp1 - xn) < precision then xnp1 else halley xnp1
                 where
                     xnp1 = new xn
