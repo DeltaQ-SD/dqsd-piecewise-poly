@@ -311,7 +311,8 @@ new = x - (px/p'x)/(1 - px/p'x * p''x/2p'x)
 Halley will fail if degree p <=1 so treat these as speecial cases
 -}
 findPolyRoot precision (l, u) p
-    | degp < 0  = Just x0 -- the whokle interval is a root, so return the basepoint
+    | precision <= 0 = error "Invalid precision value"
+    | degp < 0  = Just l -- the whokle interval is a root, so return the basepoint
     | degp == 0 = Nothing -- non-zeo constant so no root present
     | degp == 1 = Just ((-head ps)/(last ps)) -- p0 + p1x = 0 => x = -p0/p1
     | otherwise = Just (halley x0)
