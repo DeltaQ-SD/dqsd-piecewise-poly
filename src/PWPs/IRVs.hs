@@ -262,7 +262,7 @@ centiles probabilities dQ
     | last probabilities > 1        = error "Probability exceeds one"
     -- deal with degenerate case where the support has zero width: all centiles the same value
     | otherwise = if eps == 0 then replicate (length probabilities) (Just $ fst (support dQ))
-                              else reverse $ findCentiles probabilities
+                              else findCentiles probabilities
         where
             intervals = getPieces $ makeCDF dQ
             eps = fst (support dQ) - snd (support dQ) / 1000 -- arbitrary parameter!
