@@ -254,8 +254,8 @@ support (PDF x) = piecewiseSupport x
 support (CDF x) = piecewiseSupport x
 
 centiles :: (Ord a, Enum a, Eq a, Fractional a, Num a) => [a] -> IRV a -> [Maybe a]
--- | Given a list of probabiity values, return the times at which that value is reached; 
--- if it is never reached, return Nothing
+-- | Given a list of probabiity values, return the times at which each value is reached; 
+-- if it is never reached, return Nothing in that position
 centiles probabilities dQ
     | null probabilities            = error "Empty probability list"
     | not (monotonic probabilities) = error "Probabilities not monotonic"

@@ -81,7 +81,7 @@ scalePD x (H y z) = H (x * y) (x * z)
 
 evaluatePD :: Num a => a -> PolyDelta a -> [a]
 evaluatePD point (P x) = [SP.evaluatePoly point x]
-evaluatePD _ (H x y) = [x, x + y] -- this will make the piecewise integration work
+evaluatePD _ (H x y) = [x, y] 
 evaluatePD _ (D x) = [x]
 
 integratePD :: (Eq a, Fractional a) => PolyDelta a -> PolyDelta a
