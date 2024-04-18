@@ -243,10 +243,8 @@ probMass = piecesFinalValue . makeCDF
 compareIRVs :: (Ord a, Enum a, Eq a, Fractional a, Num a) => IRV a -> IRV a -> Maybe Ordering
 {- | 
     If the two IRVs are partially ordered, return an ordering, otherwise return Nothing.
-    Ordering is preserved through integration and differentiation, so go use either PDF
-    or CDF - CDF -> PDF is cheaper so use PDFs.
 -}
-compareIRVs x y = comparePW (makePDF x) (makePDF y)
+compareIRVs x y = comparePW (makeCDF x) (makeCDF y)
 
 support :: (Eq a, Fractional a) => IRV a -> (a, a)
 -- | return the first and last basepoints for which the value is significant
