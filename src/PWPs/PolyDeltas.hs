@@ -171,10 +171,10 @@ comparePDToZero (lf, uf, D f)
     | f > 0         = Just GT
     | otherwise     = Just LT
 comparePDToZero (lf, uf, H x y)
-    | lf /= uf      = error "Non-zero Heaviside interval"
-    | (x + y) == 0  = Just EQ
-    | (x + y) > 0   = Just GT
-    | otherwise     = Just LT
+    | lf /= uf                                          = error "Non-zero Heaviside interval"
+    | (x == 0) && (y == 0)                              = Just EQ
+    | ((x > 0) && (y >= 0)) || ((x >= 0) && (y > 0))    = Just GT
+    | otherwise                                         = Just LT
 
 instance (Fractional a, Eq a, Ord a) => Comparable a (PolyDelta a)
     where
