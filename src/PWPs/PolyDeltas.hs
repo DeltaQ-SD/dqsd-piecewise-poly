@@ -174,7 +174,8 @@ comparePDToZero (lf, uf, H x y)
     | lf /= uf                                          = error "Non-zero Heaviside interval"
     | (x == 0) && (y == 0)                              = Just EQ
     | ((x > 0) && (y >= 0)) || ((x >= 0) && (y > 0))    = Just GT
-    | otherwise                                         = Just LT
+    | ((x < 0) && (y <= 0)) || ((x <= 0) && (y < 0))    = Just LT
+    | otherwise                                         = Nothing
 
 instance (Fractional a, Eq a, Ord a) => Comparable a (PolyDelta a)
     where
