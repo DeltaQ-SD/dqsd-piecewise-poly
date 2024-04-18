@@ -243,10 +243,8 @@ probMass = piecesFinalValue . makeCDF
 compareIRVs :: (Ord a, Enum a, Eq a, Fractional a, Num a) => IRV a -> IRV a -> Maybe Ordering
 {- | 
     If the two IRVs are partially ordered, return an ordering, otherwise return Nothing.
-    Ordering is preserved through integration and differentiation, so go use either PDF
-    or CDF - CDF -> PDF is cheaper so use PDFs.
 -}
-compareIRVs x y = comparePW (makePDF x) (makePDF y)
+compareIRVs x y = comparePW (makeCDF x) (makeCDF y)
 
 support :: (Eq a, Fractional a) => IRV a -> (a, a)
 -- | return the first and last basepoints for which the value is significant
@@ -254,8 +252,8 @@ support (PDF x) = piecewiseSupport x
 support (CDF x) = piecewiseSupport x
 
 centiles :: (Ord a, Enum a, Eq a, Fractional a, Num a) => [a] -> IRV a -> [Maybe a]
--- | Given a list of probabiity values, return the times at which that value is reached; 
--- if it is never reached, return Nothing
+-- | Given a list of probabiity values, return the times at which each value is reached; 
+-- if it is never reached, return Nothing in that position
 centiles probabilities dQ
     | null probabilities            = error "Empty probability list"
     | not (monotonic probabilities) = error "Probabilities not monotonic"
