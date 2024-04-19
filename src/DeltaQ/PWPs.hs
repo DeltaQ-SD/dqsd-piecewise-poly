@@ -13,6 +13,7 @@ module DeltaQ.PWPs
  , DeltaQIntrospection(..)
  , Slazard(..)
  , DeltaQVisualisation(..)
+ , module DeltaQ.Model.Utilities
  , shiftedHeaviside
  )
 where
@@ -63,10 +64,16 @@ instance DeltaQOps (IRV Double) where
 instance DeltaQ𝛩 (IRV Double) where
   shifted𝛩 = PWP.constructDelta
 
+instance DeltaQTimeout (IRV Double)
+
 instance DeltaQUniform (IRV Double) where
   uniform0 = PWP.constructUniform
 
+instance DeltaQIntrospection (IRV Double) where
+  partialOrdering = PWP.compareIRVs
+
 instance DeltaQVisualisation (IRV Double) where
   asDiscreteCDF = PWP.asDiscreteCDF
-
   asDiscretePDF = PWP.asDiscretePDF
+  fromQTA xs = PWP.constructCDF $ (0,never) : xs
+  fromEmpirical = PWP.constructLinearCDF
