@@ -2,7 +2,7 @@
 {-|
 Module      : IRVs
 Description : Operations on improper random variables
-Copyright   : (c) Peter Thompson, 2023
+Copyright   : (c) Peter Thompson, 2024
 License     : BSD-2-Clause
 Maintainer  : peter.thompson@pnsol.com
 Stability   : experimental
@@ -19,6 +19,8 @@ We define operators for convolution, first-to-finish, all-to-finish and weighted
 We also provide an operation to extract the probability mass (<= 1).
 
 We provide an implementation of the partial order on IRVs.
+
+We enable extraction of centiles.
 
 Note that we can consistently represent 'bottom' using polynomials and 'top' by including deltas.
 -}
@@ -112,12 +114,16 @@ zeroPDF = PDF (makePieces [(0, P $ makePoly 0)])
 monotonicFromZero :: (Ord a, Num a) => [a] -> Bool
 monotonicFromZero xs = if null xs then error "Empty list" else head xs == 0 && monotonic xs
 
+repeatedPoint :: Eq a => [a] -> Bool
+repeatedPoint as = and $ zipWith (==) as (tail as)
+
 constructCDF :: (Ord a, Enum a, Eq a, Fractional a, Num a) => [(a, a)] -> IRV a
 -- | Construct a CDF from a list of values, treating each new value as a step up from the one before, assuming we start at 0
 -- | First interval is a zero polynomial: subsequent intervals start with a delta and then have a constant polynomial.
 constructCDF xs
     | length xs < 2                         = error "Insufficient points"
     | not (monotonicFromZero basepoints)    = error "Basepoints not monotonic"
+    | repeatedPoint basepoints              = error "Repeated basepoint"
     | not (monotonicFromZero probabilities) = error "Probabilities not monotonic"
     | last probabilities > 1                = error "Probability exceeds one"
     | otherwise = (CDF . makePieces) (interleave treads risers)
@@ -125,7 +131,8 @@ constructCDF xs
             basepoints = map fst xs
             probabilities = map snd xs
             -- Each step up corresponds to a delta of the difference with the previous value
-            risers = zip (tail basepoints) (map D (zipWith (-) (tail probabilities) probabilities))
+            makeStep (x, y) = H x y
+            risers = zip (tail basepoints) (map makeStep $ zip (tail probabilities) probabilities)
             treads = zip basepoints (map (P . makePoly) probabilities) -- always have one more tread than riser
             interleave :: [b] -> [b] -> [b]
             interleave [] _ = []
@@ -138,6 +145,7 @@ constructLinearCDF:: (Ord a, Enum a, Eq a, Fractional a, Num a) => [(a, a)] -> I
 constructLinearCDF xs
     | length xs < 2                         = error "Insufficient points"
     | not (monotonicFromZero basepoints)    = error "Basepoints not monotonic"
+    | repeatedPoint basepoints              = error "Repeated basepoint"
     | not (monotonicFromZero probabilities) = error "Probabilities not monotonic"
     | 0 `elem` steps                        = error "Zero-width interval"
     | last probabilities > 1                = error "Probability exceeds one"
