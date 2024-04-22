@@ -132,7 +132,7 @@ constructCDF xs
             probabilities = map snd xs
             -- Each step up corresponds to a delta of the difference with the previous value
             makeStep (x, y) = H x y
-            risers = zip (tail basepoints) (map makeStep $ zip (tail probabilities) probabilities)
+            risers = zip (tail basepoints) (zipWith (curry makeStep) probabilities (tail probabilities) )
             treads = zip basepoints (map (P . makePoly) probabilities) -- always have one more tread than riser
             interleave :: [b] -> [b] -> [b]
             interleave [] _ = []
@@ -149,15 +149,21 @@ constructLinearCDF xs
     | not (monotonicFromZero probabilities) = error "Probabilities not monotonic"
     | 0 `elem` steps                        = error "Zero-width interval"
     | last probabilities > 1                = error "Probability exceeds one"
-    | otherwise = (CDF . makePieces) (zip basepoints slopes)
+    | otherwise = (CDF . makePieces) (zip basepoints segments)
         where
+            {- 
+                Each linear polynomial has the form y = sx + c, where s is given by the difference
+                in successive probabilities divided by the difference in succesive basepoints.
+                The constant c is fixed by the constraint that we need to pass through the point (xn,yn),
+                so cn = yn - xnsn
+            -}
             basepoints = map fst xs
             probabilities = map snd xs
-            steps   = zipWith (-) (tail basepoints) basepoints -- width of each interval
-            stepUps = zipWith (-) (tail probabilities) probabilities -- increments in probabilities
-            slopes  = map P (zipWith3 slope probabilities stepUps steps ++ [makePoly (last probabilities)])
-            -- each polynomial starts at the current probability and linearly slopes up to the next one
-            slope x y z = Poly [x, y/z]
+            steps   = zipWith (-) (tail basepoints) basepoints          -- width of each interval
+            stepUps = zipWith (-) (tail probabilities) probabilities    -- increments in probabilities
+            slopes  = zipWith (/) stepUps steps                         -- slope of each segment
+            segments  = map P (zipWith3 makeSegment probabilities basepoints slopes ++ [makePoly (last probabilities)])
+            makeSegment y x s = Poly [y - x*s, s]
 
 asDiscreteCDF :: (Ord a, Enum a, Eq a, Fractional a, Num a) => IRV a -> Int -> [(a, a)]
 -- | Turn an IRV into a list of point pairs corresponding to the CDF, with a given minimum number of points
