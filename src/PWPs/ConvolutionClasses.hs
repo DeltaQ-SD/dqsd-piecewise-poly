@@ -15,8 +15,7 @@ We also want a convolution operator that behaves correctly.
 -}
 module PWPs.ConvolutionClasses
 (
-    Integrable (..)
-  , Differentiable (..)
+    Calculable (..)
   , Evaluable (..)
   , CompactConvolvable (..)
   , Comparable (..)
@@ -25,19 +24,14 @@ module PWPs.ConvolutionClasses
 )
 where
 
-{- may as well just use Num
 class Calculable a where
     plus          :: a -> a -> a
     times         :: a -> a -> a
     minus         :: a -> a
     zero          :: a
     fromInteger   :: Integer -> a
--}
-class Integrable a where
-    integrate     :: a -> a
-
-class Differentiable a where
     differentiate :: a -> a
+    integrate     :: a -> a
 
 class Evaluable a b where
     evaluate :: a -> b -> [a] -- evaluate b at point a
@@ -62,7 +56,7 @@ class Comparable a b where
 -}
 class Mergeable a where
     mergeObject :: a -> a -> Maybe a
-    zero        :: a
+    zeroObject  :: a
 
 class Displayable a b where
     displayObject :: a -> (a, a, b) -> Either (a,a) [(a, a)]
