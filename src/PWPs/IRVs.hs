@@ -293,11 +293,13 @@ centiles probabilities dQ
             findRoot _ [final] = Just (basepoint final)
             -- hereon we must have at least two pieces: if the value is in the range of the current interval,
             -- find the root, otherwise move on to the next piece
-            findRoot p (next:rest) = if inInterval p next (head rest)
-                                     then polyDeltaRoot eps p (basepoint next, basepoint $ head rest) (object next)
-                                     else findRoot p rest
-            -- inInterval :: (Ord a, Enum a, Eq a, Fractional a, Num a) => a -> Piece a (PolyDelta a) -> Piece a (PolyDelta a) -> Bool
-            inInterval y first second = firstValue <= y && y <= secondValue
+            findRoot p (first:rest@(second:_)) = 
+                -- if the value is in the range of the current interval,
+                if firstValue <= p && p <= secondValue
+                -- find the root,
+                then polyDeltaRoot eps p (basepoint first, basepoint second) (object first)
+                -- otherwise move on to the next piece
+                else findRoot p rest
                 where
                     firstValue  = head $ evaluatePD (basepoint first) (object first)
                     secondValue = last $ evaluatePD (basepoint second) (object first)

@@ -297,11 +297,7 @@ compareToZero (l, u, p)
 findPolyRoot :: (Fractional a, Eq a, Num a, Ord a) => a -> (a, a) -> Poly a -> Maybe a
 {-| 
 This is only called when there is presumed to be a root in the given interval, so we simply have to find it.
-Since we can differentiate a polynomial we can use one of Householder's Methods
-such as Halley's Method https://www.wikiwand.com/en/Halley's_method
-This might be optimised by using Euclidian Division to reduce the order of the polynomials
-that are evaluated at each iteration, using the alternative formulation of Halley's Method:
-new = x - (px/p'x)/(1 - px/p'x * p''x/2p'x)
+We do this by repeatedly halving the interval in which the root must lie.
 Halley will fail if degree p <=1 so treat these as speecial cases
 -}
 findPolyRoot precision (l, u) p
@@ -309,19 +305,22 @@ findPolyRoot precision (l, u) p
     | degp < 0  = Just l -- the whokle interval is a root, so return the basepoint
     | degp == 0 = Nothing -- non-zeo constant so no root present
     | degp == 1 = Just ((-head ps)/(last ps)) -- p0 + p1x = 0 => x = -p0/p1
-    | otherwise = Just (halley x0)
+    | otherwise = Just (halveInterval precision l u pl pu)
         where
             Poly ps = p
             degp    = degreePoly p
-            p'      = differentiate p
-            p''     = differentiate p'
-            x0      = (u - l) /2 -- take the middle of the interval as our initial guess
-            new x   = x - (2 * px * p'x) / (2 * p'x * p'x - px * p''x)
-                where
-                    px   = evaluatePoly x p
-                    p'x  = evaluatePoly x p'
-                    p''x = evaluatePoly x p''
-            -- Stop when the difference between successive approximations is less than the required precision.
-            halley xn = if abs (xnp1 - xn) < precision then xnp1 else halley xnp1
-                where
-                    xnp1 = new xn
+            pu      = evaluatePoly u p
+            pl      = evaluatePoly l p
+            --halveInterval :: (Fractional a, Eq a, Num a, Ord a) => a -> a -> a -> a -> a
+            halveInterval eps x y px py =
+                let
+                    width   = y - x
+                    mid     = x + width/2
+                    pmid    = evaluatePoly mid p
+                in
+                    -- when the interval is small enough, stop: the root is in this interval, so take the mid point
+                    if width <= eps then mid
+                    -- otherwise, if the polynomial has different signs at the ends of the lower half, choose this
+                    else if px * pmid < 0 then halveInterval eps x mid px pmid
+                    -- otherwise choose the upper interval and continue
+                    else halveInterval eps mid y pmid py
