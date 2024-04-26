@@ -296,22 +296,21 @@ compareToZero (l, u, p)
 
 findPolyRoot :: (Fractional a, Eq a, Num a, Ord a) => a -> (a, a) -> Poly a -> Maybe a
 {-| 
-This is only called when there is presumed to be a root in the given interval, so we simply have to find it.
+This is only called when there is known to be a root in the given interval, so we simply have to find it.
 We do this by repeatedly halving the interval in which the root must lie.
-Halley will fail if degree p <=1 so treat these as speecial cases
+If degree p <=1 (poly is constant or linear) we treat these as special cases
 -}
 findPolyRoot precision (l, u) p
     | precision <= 0 = error "Invalid precision value"
-    | degp < 0  = Just l -- the whokle interval is a root, so return the basepoint
-    | degp == 0 = Nothing -- non-zeo constant so no root present
-    | degp == 1 = Just ((-head ps)/(last ps)) -- p0 + p1x = 0 => x = -p0/p1
+    | degp < 0  = Just l  -- the poly is zero, so the whole interval is a root, so return the basepoint
+    | degp == 0 = Nothing -- the poly is a non-zeo constant so no root is present
+    | degp == 1 = Just (-(head ps/last ps)) -- p0 + p1x = 0 => x = -p0/p1
     | otherwise = Just (halveInterval precision l u pl pu)
         where
             Poly ps = p
             degp    = degreePoly p
             pu      = evaluatePoly u p
             pl      = evaluatePoly l p
-            --halveInterval :: (Fractional a, Eq a, Num a, Ord a) => a -> a -> a -> a -> a
             halveInterval eps x y px py =
                 let
                     width   = y - x
