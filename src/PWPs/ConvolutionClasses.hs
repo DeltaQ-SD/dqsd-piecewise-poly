@@ -33,11 +33,11 @@ class Calculable a where
     zero          :: a
     fromInteger   :: Integer -> a
 -}
-class Integrable a where
-    integrate     :: a -> a
+class Integrable a b where
+    integrate     :: a -> b
 
-class Differentiable a where
-    differentiate :: a -> a
+class Differentiable a b where
+    differentiate :: a -> b
 
 class Evaluable a b where
     evaluate :: a -> b -> [a] -- evaluate b at point a

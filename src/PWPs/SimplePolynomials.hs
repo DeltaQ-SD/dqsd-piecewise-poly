@@ -20,8 +20,8 @@ module PWPs.SimplePolynomials
     , makeMonomial
     , shiftPolyUp
     , scalePoly
-    , integrate
-    , differentiate
+    , integratePoly
+    , differentiatePoly
     , evaluatePoly
     , convolvePolys
     , compareToZero
@@ -30,7 +30,6 @@ module PWPs.SimplePolynomials
     , displayPoly
 ) where
 
-import PWPs.ConvolutionClasses
 newtype Poly a = Poly [a]
     deriving (Eq,Show,Functor,Foldable)
 
@@ -118,12 +117,12 @@ differentiatePoly :: Num a => Poly a -> Poly a
 differentiatePoly (Poly [])     = error "Polynomial was empty"
 differentiatePoly (Poly [_])    = zeroPoly -- constant differentiates to zero
 differentiatePoly (Poly (_:as)) = Poly (zipWith (*) as (iterate (+1) 1)) -- discard the constant term, everything else noves down one
-instance (Eq a, Num a, Fractional a) => Differentiable (Poly a)
+{-instance (Eq a, Num a, Fractional a) => Differentiable (Poly a)
     where
         differentiate     = differentiatePoly
 instance (Eq a, Num a, Fractional a) => Integrable (Poly a)
     where
-        integrate         = integratePoly
+        integrate         = integratePoly-}
 
 evaluatePoly :: Num p => p -> Poly p -> p
 {- |

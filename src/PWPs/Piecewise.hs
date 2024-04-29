@@ -169,13 +169,13 @@ instance (Num a,Eq a, Ord a, Mergeable b, Num b) => Num (Pieces a b)
         signum          = undefined        
         fromInteger n   = Pieces [Piece {basepoint = 0 :: a, object = fromInteger n}]
 
-instance (Num a, Eq a, Ord a, Differentiable b, Mergeable b, Evaluable a b) => Differentiable (Pieces a b)
+instance (Num a, Eq a, Ord a, Differentiable b c, Mergeable c, Evaluable a b) => Differentiable (Pieces a b) (Pieces a c)
     where
         {- | Piecewise differentiation is straightforward: just differentiate all the objects
         Since constants all differentate to zero, it is worth checking whether pieces can be merged.   
         -}
         differentiate   = mergePieces . fmap differentiate
-instance (Num a, Eq a, Ord a, Integrable b, Mergeable b, Evaluable a b) => Integrable (Pieces a b)
+instance (Num a, Eq a, Ord a, Integrable b c, Mergeable c, Evaluable a c) => Integrable (Pieces a b) (Pieces a c)
     where
         integrate       = integratePieces
 {- |
@@ -183,10 +183,10 @@ For piecewise integration we need to evaluate at the boundary points to make the
 We need to pass the integrated object to the next interation so that it can be evaluated on the basepoint
 and to recognise deltas and pass them through as well as evaluating them
 -}
-integratePieces :: (Num a, Eq a, Ord a, Integrable b, Evaluable a b) => Pieces a b -> Pieces a b
+integratePieces :: (Num a, Eq a, Ord a, Integrable b c, Evaluable a c) => Pieces a b -> Pieces a c
 integratePieces ps = Pieces (goInt 0 (disaggregate (getPieces ps)))
     where
-        goInt :: (Num a, Eq a, Ord a, Integrable b, Evaluable a b) => a -> [(a, a, b)] -> [Piece a b]
+        goInt :: (Num a, Eq a, Ord a, Integrable b c, Evaluable a c) => a -> [(a, a, b)] -> [Piece a c]
         goInt _ [] = [] -- stop when the list of pieces is empty 
         {- 
            We evaluate each integrated object at the initial and final points of the interval.

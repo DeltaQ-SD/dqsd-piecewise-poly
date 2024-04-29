@@ -20,13 +20,14 @@ piecewise integration/differentiation work.
 module PWPs.PolyDeltas
 (
       PolyDelta (..)
-    , scalePD
+    , PolyHeaviside (..)
+--    , scalePD
     , differentiate
     , integrate
-    , evaluatePD
+--    , evaluatePD
     , convolvePolyDeltas
-    , comparePDToZero
-    , polyDeltaRoot
+    , comparePHToZero
+    , polyHeavisideRoot
 )
 where
 import PWPs.ConvolutionClasses
@@ -38,94 +39,112 @@ A delta has a mass, and a Heaviside has a starting value and a rise;
 for probabilities all should be constrained between 0 and 1. 
 The position of both Ds and Hs is stored as its basepoint when doing piecewise operations.
 -}
-data PolyDelta a = P (Poly a) | D a | H a a
+data PolyDelta a = Pd (Poly a) | D a
+    deriving (Eq, Show)
+
+data PolyHeaviside a = Ph (Poly a) | H a a
     deriving (Eq, Show)
 
 type MyConstraints a = (Eq a, Num a, Fractional a)
 instance Functor PolyDelta where
     fmap f (D x) = D (f x)
+    fmap f (Pd x) = Pd (fmap f x)
+instance Functor PolyHeaviside where
     fmap f (H x y) = H (f x) (f y)
-    fmap f (P x) = P (fmap f x)
+    fmap f (Ph x) = Ph (fmap f x)
 
 plusPD :: (Eq a, Fractional a) => PolyDelta a -> PolyDelta a -> PolyDelta a
 -- Polynomials have zero mass at a single point, so they are dominated by Ds and Hs
-plusPD (P x) (P y) = P (x + y)
-plusPD (P _) (H x y) = H x y
-plusPD (P _) (D x) = D x
-plusPD (D x) (P _) = D x
+plusPD (Pd x) (Pd y) = Pd (x + y)
+plusPD (Pd _) (D x) = D x
+plusPD (D x) (Pd _) = D x
 plusPD (D x) (D x') = D (x + x')
-plusPD (H x y) (P _) = H x y
-plusPD (H x y) (H x' y') = H (x + x') (y + y')
-plusPD _ _ = error "Cannot add Delta to Heaviside"
 
 timesPD :: (Eq a, Fractional a) => PolyDelta a -> PolyDelta a -> PolyDelta a
-timesPD (P x) (P y) = P (x * y)
-timesPD (P _) (D x) = D x
-timesPD (D x) (P _) = D x
+timesPD (Pd x) (Pd y) = Pd (x * y)
+timesPD (Pd _) (D x) = D x
+timesPD (D x) (Pd _) = D x
 timesPD (D x) (D x') = D (x * x')
-timesPD (P _) (H x y) = H x y
-timesPD (H x y) (P _) = H x y
-timesPD (H x y) (H x' y') = H (x * x') (y * y')
-timesPD _ _ = error "Cannot multiply Delta by Heaviside"
-
-minusPD :: Num a => PolyDelta a -> PolyDelta a
-minusPD = fmap negate
-
-scalePD :: Num a => a -> PolyDelta a -> PolyDelta a
-scalePD x (P a) = P (SP.scalePoly x a)
-scalePD x (D y) = D (x * y)
-scalePD x (H y z) = H (x * y) (x * z)
-
-evaluatePD :: Num a => a -> PolyDelta a -> [a]
-evaluatePD point (P x) = [SP.evaluatePoly point x]
-evaluatePD _ (H x y) = [x, y]
-evaluatePD _ (D x) = [x]
-
-integratePD :: (Eq a, Fractional a) => PolyDelta a -> PolyDelta a
-integratePD (P x) = P (SP.integrate x)
-integratePD (D x) = H 0 x
-integratePD (H _ _) = error "Integration of a Heaviside disallowed" -- would require more sophisticated joining of pieces
-
-differentiatePD :: MyConstraints a => PolyDelta a -> PolyDelta a
-differentiatePD (P x) = P (SP.differentiate x)
-differentiatePD (H x y) = D (y - x)
-differentiatePD (D _) = error "Differentiation of Delta is illegal"
 
 instance MyConstraints a => Num (PolyDelta a) where
     (+)           = plusPD
     (*)           = timesPD
-    negate        = minusPD
+    negate        = fmap negate
     abs           = undefined
     signum        = undefined
     fromInteger n = D $ Prelude.fromInteger n
 
-{-instance MyConstraints a => Calculable (PolyDelta a)
-    where
-        plus             = plusPD
-        times            = timesPD
-        minus            = minusPD
-        zero             = P 0 -- is this the best choice?
-        fromInteger n    = D (Prelude.fromInteger n) -- is this the best choice?
-        differentiate    = differentiatePD
-        integrate        = integratePD-}
-instance MyConstraints a => Integrable (PolyDelta a)
-    where
-        integrate        = integratePD
 
-instance MyConstraints a => Differentiable (PolyDelta a)
+plusPH :: (Eq a, Fractional a) => PolyHeaviside a -> PolyHeaviside a -> PolyHeaviside a
+-- Polynomials have zero mass at a single point, so they are dominated by Ds and Hs
+plusPH (Ph x) (Ph y) = Ph (x + y)
+plusPH (Ph _) (H x y) = H x y
+plusPH (H x y) (Ph _) = H x y
+plusPH (H x y) (H x' y') = H (x + x') (y + y')
+
+timesPH :: (Eq a, Fractional a) => PolyHeaviside a -> PolyHeaviside a -> PolyHeaviside a
+timesPH (Ph x) (Ph y) = Ph (x * y)
+timesPH (Ph _) (H x y) = H x y
+timesPH (H x y) (Ph _) = H x y
+timesPH (H x y) (H x' y') = H (x * x') (y * y')
+instance MyConstraints a => Num (PolyHeaviside a) where
+    (+)           = plusPH
+    (*)           = timesPH
+    negate        = fmap negate
+    abs           = undefined
+    signum        = undefined
+    fromInteger _ = undefined
+
+integratePDH :: (Eq a, Fractional a) => PolyDelta a -> PolyHeaviside a
+integratePDH (Pd x) = Ph (integratePoly x)
+integratePDH (D x) = H 0 x
+
+differentiatePHD :: MyConstraints a => PolyHeaviside a -> PolyDelta a
+differentiatePHD (Ph x) = Pd (differentiatePoly x)
+differentiatePHD (H x y) = D (y - x)
+
+instance MyConstraints a => Integrable (PolyDelta a) (PolyHeaviside a)
     where
-        differentiate    = differentiatePD
+        integrate        = integratePDH
+
+instance MyConstraints a => Differentiable (PolyHeaviside a) (PolyDelta a)
+    where
+        differentiate    = differentiatePHD
+
+scalePD :: Num a => a -> PolyDelta a -> PolyDelta a
+scalePD x (Pd a) = Pd (SP.scalePoly x a)
+scalePD x (D y) = D (x * y)
+
+evaluatePD :: Num a => a -> PolyDelta a -> [a]
+evaluatePD point (Pd x) = [SP.evaluatePoly point x]
+evaluatePD _ (D x) = [x]
 
 boostPD :: MyConstraints a => a -> PolyDelta a -> PolyDelta a
-boostPD x (P y) = plusPD (P y) (P (makePoly x))
+boostPD x (Pd y) = Pd y + Pd (makePoly x)
 boostPD _ (D y) = D y
-boostPD x (H y z) = H (x + y) (x + z)
-
 instance MyConstraints a => Evaluable a (PolyDelta a)
     where
         evaluate  = evaluatePD
         boost     = boostPD
         scale     = scalePD
+
+scalePH :: Num a => a -> PolyHeaviside a -> PolyHeaviside a
+scalePH x (Ph a) = Ph (SP.scalePoly x a)
+scalePH x (H y z) = H (x * y) (x * z)
+
+evaluatePH :: Num a => a -> PolyHeaviside a -> [a]
+evaluatePH point (Ph x) = [SP.evaluatePoly point x]
+evaluatePH _ (H x y) = [x, y]
+
+boostPH :: MyConstraints a => a -> PolyHeaviside a -> PolyHeaviside a
+boostPH x (Ph y) = Ph y + Ph (makePoly x)
+boostPH x (H y z) = H (x + y) (x + z)
+
+instance MyConstraints a => Evaluable a (PolyHeaviside a)
+    where
+        evaluate  = evaluatePH
+        boost     = boostPH
+        scale     = scalePH
 
 -- | Removes excess basepoints if the objects on either side are the same
 aggregate :: Eq a => [(a, PolyDelta a)] -> [(a, PolyDelta a)]
@@ -142,48 +161,41 @@ When both arguments are polynomials, we check the intervals are non-zero then us
 For a delta, lower == upper (invariant to be checked), and the effect of the delta is to translate the other
 argument (whichever it is) along by this amount. Need to ensure there is still an initial interval based at zero.
 -}
-convolvePolyDeltas (lf, uf, P f) (lg, ug, P g) =
+convolvePolyDeltas (lf, uf, Pd f) (lg, ug, Pd g) =
     if (uf <= lf) || (ug <= lg) then error "Invalid polynomial interval width"
-                                else aggregate $ map (\(x, p) -> (x, P p)) (convolvePolys (lf, uf, f) (lg, ug, g))
-convolvePolyDeltas (lf, uf, D f) (lg, ug, P g)
+                                else aggregate $ map (\(x, p) -> (x, Pd p)) (convolvePolys (lf, uf, f) (lg, ug, g))
+convolvePolyDeltas (lf, uf, D f) (lg, ug, Pd g)
     | lf /= uf     = error "Non-zero delta interval"
     | ug < lg      = error "Negative interval width"
-    | f == 0       = [(0, P zeroPoly)] -- convolving with a zero-sized delta gives nothing
-    | lg + lf == 0 = [(0, scalePD f (P g)), (ug, P zeroPoly)] -- degenerate case of delta at zero
+    | f == 0       = [(0, Pd zeroPoly)] -- convolving with a zero-sized delta gives nothing
+    | lg + lf == 0 = [(0, scalePD f (Pd g)), (ug, Pd zeroPoly)] -- degenerate case of delta at zero
     -- Shift the poly by the basepoint of the delta and insert a new initial zero interval
-    | otherwise    = aggregate [(0, P zeroPoly), (lg + lf, scalePD f (P (shiftPoly lf g))), (ug + lf, P zeroPoly)]
-convolvePolyDeltas (lf, uf, P f) (lg, ug, D g) = convolvePolyDeltas (lg, ug, D g) (lf, uf, P f)  -- commutative
+    | otherwise    = aggregate [(0, Pd zeroPoly), (lg + lf, scalePD f (Pd (shiftPoly lf g))), (ug + lf, Pd zeroPoly)]
+convolvePolyDeltas (lf, uf, Pd f) (lg, ug, D g) = convolvePolyDeltas (lg, ug, D g) (lf, uf, Pd f)  -- commutative
 convolvePolyDeltas (lf, uf, D f) (lg, ug, D g) -- both deltas
     | lf /= uf || lg /= ug  = error "Non-zero delta interval"
-    | f * g == 0            = [(0, P zeroPoly)] -- convolving with a zero-sized delta gives nothing
-    | lg + lf == 0          = [(0, D (f * g)), (0, P zeroPoly)] -- degenerate case of deltas at zero
--- convolving with Heavisides is forbidden
-convolvePolyDeltas _ _ = error "Unexpected convolution case"
-
+    | f * g == 0            = [(0, Pd zeroPoly)] -- convolving with a zero-sized delta gives nothing
+    | lg + lf == 0          = [(0, D (f * g)), (0, Pd zeroPoly)] -- degenerate case of deltas at zero
+convolvePolyDeltas (_,_,_) (_,_,_) = error "Unexpected convolution case" -- stops warning of incomplete patterns!
 instance (Num a, Fractional a, Ord a) => CompactConvolvable a (PolyDelta a)
     where
         convolveIntervals = convolvePolyDeltas
 
 {-|
-    We measure whether or not a polydelta is consistently above or below zero, or equals zero
+    We measure whether or not a polyheaviside is consistently above or below zero, or equals zero
 -}
-comparePDToZero :: (Fractional a, Eq a, Ord a) => (a, a, PolyDelta a) -> Maybe Ordering
-comparePDToZero (lf, uf, P f) = SP.compareToZero (lf, uf, f) -- simple polynomial case
-comparePDToZero (lf, uf, D f)
-    | lf /= uf      = error "Non-zero Delta interval"
-    | f == 0        = Just EQ
-    | f > 0         = Just GT
-    | otherwise     = Just LT
-comparePDToZero (lf, uf, H x y)
+comparePHToZero :: (Fractional a, Eq a, Ord a) => (a, a, PolyHeaviside a) -> Maybe Ordering
+comparePHToZero (lf, uf, Ph f) = SP.compareToZero (lf, uf, f) -- simple polynomial case
+comparePHToZero (lf, uf, H x y)
     | lf /= uf                                          = error "Non-zero Heaviside interval"
     | (x == 0) && (y == 0)                              = Just EQ
     | ((x > 0) && (y >= 0)) || ((x >= 0) && (y > 0))    = Just GT
     | ((x < 0) && (y <= 0)) || ((x <= 0) && (y < 0))    = Just LT
     | otherwise                                         = Nothing
 
-instance (Fractional a, Eq a, Ord a) => Comparable a (PolyDelta a)
+instance (Fractional a, Eq a, Ord a) => Comparable a (PolyHeaviside a)
     where
-        compareZero = comparePDToZero
+        compareZero = comparePHToZero
 
 {-|
     We merge polynomials if they are equal. We merge Ds/Hs by adding them (not that we expect this case).
@@ -192,32 +204,45 @@ instance (Fractional a, Eq a, Ord a) => Comparable a (PolyDelta a)
 instance (Num a, Eq a, Fractional a) => Mergeable (PolyDelta a)
     where
         mergeObject a b = case (a, b) of
-            (P x, P y) -> if x == y then Just (P y) else Nothing
-            (D x, P y) -> if x == 0 then Just (P y) else Nothing
-            (H _ x, P y) -> if x == 0 then Just (P y) else Nothing
+            (Pd x, Pd y) -> if x == y then Just (Pd y) else Nothing
+            (D x, Pd y) -> if x == 0 then Just (Pd y) else Nothing
             (D x, D y) -> Just (D (x + y))
+            (_, _) -> Nothing
+        zero = Pd zeroPoly
+
+instance (Num a, Eq a, Fractional a) => Mergeable (PolyHeaviside a)
+    where
+        mergeObject a b = case (a, b) of
+            (Ph x, Ph y) -> if x == y then Just (Ph y) else Nothing
+            (H x y, Ph z) -> if x == y then Just (Ph z) else Nothing
             (H x y, H x' y') -> Just (H (x + x') (y + y'))
             (_, _) -> Nothing
-        zero = P zeroPoly
+        zero = Ph zeroPoly
 
 {-|
-    Given an interval containing a given value of a PolyDelta, find its location
+    Given an interval containing a given value of a PolyHeaviside, find its location
 -}
-polyDeltaRoot :: (Ord a, Num a, Eq a, Fractional a) => a -> a -> (a, a) -> PolyDelta a -> Maybe a
+polyHeavisideRoot  :: (Ord a, Num a, Eq a, Fractional a) => a -> a -> (a, a) -> PolyHeaviside a -> Maybe a
 -- If we have a step, the interval is zero width so this is the root
-polyDeltaRoot _ _ (l, u) (H _ _) = if l /= u then error "Non-zero Heaviside interval" else Just l
+polyHeavisideRoot  _ _ (l, u) (H _ _) = if l /= u then error "Non-zero Heaviside interval" else Just l
 -- otherwise we have a polynomial: subtract the value we are looking for so that we seek a zero crossing
-polyDeltaRoot e x (l, u) (P p) = findPolyRoot e (l, u) (p - makePoly x)
-polyDeltaRoot _ _ _ (D _) = error "Can't take the root of a delta"
+polyHeavisideRoot  e x (l, u) (Ph p) = findPolyRoot e (l, u) (p - makePoly x)
 
 displayPolyDelta :: (Ord a, Num a, Eq a, Fractional a) => a -> (a, a, PolyDelta a) -> Either (a,a) [(a, a)]
 displayPolyDelta _ (l, u, D x)   = if l /= u then error "Non-zero delta interval"
                                     else Left (l, x)
-displayPolyDelta s (l, u, P p)   = if l >= u then error "Invalid polynomial interval"
+displayPolyDelta s (l, u, Pd p)   = if l >= u then error "Invalid polynomial interval"
                                     else Right (displayPoly p (l, u) s)
-displayPolyDelta _ (l, u, H x y) = if l /= u then error "Non-zero heaviside interval"
-                                    else Left (l, y - x)
-
 instance (Ord a, Num a, Eq a, Fractional a) => Displayable a (PolyDelta a)
     where
         displayObject = displayPolyDelta
+
+displayPolyHeaviside  :: (Ord a, Num a, Eq a, Fractional a) => a -> (a, a, PolyHeaviside a) -> Either (a,a) [(a, a)]
+displayPolyHeaviside  s (l, u, Ph p)   = if l >= u then error "Invalid polynomial interval"
+                                    else Right (displayPoly p (l, u) s)
+displayPolyHeaviside  _ (l, u, H x y) = if l /= u then error "Non-zero heaviside interval"
+                                    else Left (l, y - x)
+
+instance (Ord a, Num a, Eq a, Fractional a) => Displayable a (PolyHeaviside a)
+    where
+        displayObject = displayPolyHeaviside
