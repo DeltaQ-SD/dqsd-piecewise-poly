@@ -76,23 +76,23 @@ top = PDF (makePieces [(0, D 1), (0, Pd (makePoly 0))])
 bottom :: (Ord a, Num a) => IRV a
 bottom = CDF (makePieces [(0, Ph (makePoly 0))])
 
-cumulativeMass :: (Ord a, Enum a, Num a, Fractional a) => IRV a -> a -> a
-cumulativeMass x p = last $ evaluateAtApoint p (makeCDF x)
+cumulativeMass :: (Ord a, Enum a, Num a, Fractional a, Evaluable a (DistributionH a), Integrable (DistributionD a) (DistributionH a)) => IRV a -> a -> a
+cumulativeMass x p = last $ evaluate p (makeCDF x)
 
 invert :: (Eq a, Ord a, Fractional a) => DistributionH a -> DistributionH a
 -- | Construct the inverse CDF by subtracting the CDF from 1
 invert = applyObject (-) (Ph $ makePoly 1)
 
-shiftIRV :: MyConstraints a => a -> IRV a -> IRV a
+shiftIRV :: (Fractional a, Ord a, Num a, Enum a, Eq a, Differentiable (DistributionH a) (DistributionD a)) => a -> IRV a -> IRV a
 -- | Make a delta and convolve with it
 shiftIRV s x = constructDelta s PWPs.IRVs.<+> PDF (makePDF x)
 
-makePDF :: MyConstraints a => IRV a -> DistributionD a
+makePDF :: (Fractional a, Ord a, Num a, Enum a, Eq a, Differentiable (DistributionH a) (DistributionD a)) => IRV a -> DistributionD a
 -- | Force an IRV into a PDF by differentiating if necessary
 makePDF (PDF x) = x
 makePDF (CDF x) = differentiate x
 
-makeCDF :: MyConstraints a => IRV a -> DistributionH a
+makeCDF :: (Fractional a, Ord a, Num a, Enum a, Eq a, Integrable (DistributionD a) (DistributionH a)) => IRV a -> DistributionH a
 -- | Force an IRV into a CDF by integrating if necessary
 makeCDF (CDF x) = x
 -- assume PDFs are 0 at 0

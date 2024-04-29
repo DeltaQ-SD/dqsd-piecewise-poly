@@ -1,6 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ConstraintKinds #-}
 
 {-|
 Module      : SimplePolynomials
@@ -30,21 +31,23 @@ module PWPs.SimplePolynomials
     , displayPoly
 ) where
 
-newtype Poly a = Poly [a]
+newtype Eq a => Poly a = Poly [a]
     deriving (Eq,Show,Functor,Foldable)
 
-makePoly :: a -> Poly a
+type EqNum a = (Eq a, Num a) 
+
+makePoly :: Eq a => a -> Poly a
 -- | turn a constant into a constant polynomial
 makePoly x = Poly [x]
-zeroPoly :: Num a => Poly a
+zeroPoly :: EqNum a  => Poly a
 zeroPoly = makePoly 0
 
-degreePoly :: (Num a, Eq a) => Poly a -> Int
+degreePoly :: EqNum a => Poly a -> Int
 -- a constant polynomial has one coefficient and has degree 0; for Euclidian division we want the 
 -- degree of the zero polynomial to be negative
 degreePoly x = if trimPoly x == zeroPoly then -1 else length (trimPoly x) - 1
 
-trimPoly :: (Num a, Eq a) => Poly a -> Poly a
+trimPoly :: EqNum a => Poly a -> Poly a
 -- | remove top zeroes
 trimPoly (Poly as) = Poly (reverse $ goTrim $ reverse as)
     where
@@ -52,21 +55,21 @@ trimPoly (Poly as) = Poly (reverse $ goTrim $ reverse as)
         goTrim xss@[_]      = xss -- can't use dropWhile as it would remove the last zero
         goTrim xss@(x:xs)   = if x == 0 then goTrim xs else xss
 
-makeMonomial :: (Eq a, Num a) => Int -> a -> Poly a
+makeMonomial :: EqNum a => Int -> a -> Poly a
 -- | put a coefficient in the nth place only
 makeMonomial n x = if x == 0 then zeroPoly else Poly (reverse (x:replicate n 0))
 
-shiftPolyUp :: (Eq a, Num a) => Poly a -> Poly a
+shiftPolyUp :: EqNum a  => Poly a -> Poly a
 -- | effectively multiply the polynomial by x by shifting all the coefficients up one place.
 shiftPolyUp (Poly xs)
     | xs == [0] = Poly xs     -- don't shift up zero
     | otherwise = Poly (0:xs)
 
-scalePoly :: Num a => a -> Poly a -> Poly a
+scalePoly :: EqNum a => a -> Poly a -> Poly a
 -- | scale a polynomial by a constant: more efficient than multiplying by a constant polynomial
 scalePoly x (Poly xs) = Poly (map (*x) xs)
 
-addPolys :: (Eq a, Num a) => Poly a -> Poly a -> Poly a
+addPolys :: EqNum a  => Poly a -> Poly a -> Poly a
 {- |
    Add polynomials by simply adding their coefficients as long as both lists continue.
    When one list runs out we take the tail of the longer list (this prevents us from just using zipWith!).
@@ -78,7 +81,7 @@ addPolys (Poly as) (Poly bs) = trimPoly (Poly (go as bs))
         go xs [] = xs
         go (x:xs) (y:ys) = (x + y) : go xs ys
 
-mulPolys :: (Eq a, Num a) => Poly a -> Poly a -> Poly a
+mulPolys :: EqNum a  => Poly a -> Poly a -> Poly a
 {- |
     multiply term-wise and then add (very simple - FFTs might be faster, but not for today)
     (a0 + a1x + a2x^2 + ...) * (b0 + b1x + b2x^2 ...)
@@ -90,7 +93,7 @@ mulPolys :: (Eq a, Num a) => Poly a -> Poly a -> Poly a
 -}
 mulPolys as bs = foldr addPolys zeroPoly (intermediateSums as bs)
     where
-        intermediateSums :: (Eq a, Num a) => Poly a -> Poly a -> [Poly a]
+        intermediateSums :: EqNum a  => Poly a -> Poly a -> [Poly a]
         intermediateSums _ (Poly []) = error "Second polynomial was empty"
         intermediateSums (Poly []) _ = [] -- stop when we exhaust the first list
         -- as we consume the coeffecients of the first list, we shift up the second list to increase the power under consideration
@@ -104,7 +107,7 @@ integratePoly :: (Eq a, Fractional a) => Poly a -> Poly a
 -}
 integratePoly (Poly as) = trimPoly (Poly (0:zipWith (/) as (iterate (+1) 1)))
 
-instance (Eq a, Num a) => Num (Poly a) where
+instance EqNum a  => Num (Poly a) where
     (+)               = addPolys
     (*)               = mulPolys
     negate (Poly a)   = Poly (map negate a)
@@ -112,7 +115,7 @@ instance (Eq a, Num a) => Num (Poly a) where
     signum            = undefined
     fromInteger n     = Poly [Prelude.fromInteger n]
 
-differentiatePoly :: Num a => Poly a -> Poly a
+differentiatePoly :: EqNum a => Poly a -> Poly a
 -- | Simply use dx^n/dx = nx^(n-1)
 differentiatePoly (Poly [])     = error "Polynomial was empty"
 differentiatePoly (Poly [_])    = zeroPoly -- constant differentiates to zero
@@ -124,7 +127,7 @@ instance (Eq a, Num a, Fractional a) => Integrable (Poly a)
     where
         integrate         = integratePoly-}
 
-evaluatePoly :: Num p => p -> Poly p -> p
+evaluatePoly :: EqNum p => p -> Poly p -> p
 {- |
     Evaluate a polynomial at a point.
     Minimise the number of multiplications to evaluate the polynomial by starting from the highest coefficient
@@ -191,7 +194,7 @@ shiftPoly s (Poly ps) = sum [b `scalePoly` binomialExpansion n s | (n,b) <- zip 
         -- a binomial coefficient and the shift value raised to a reducing power
         binomialTerm :: Num a => a -> Int -> Int -> a
         binomialTerm y n k = fromIntegral (n `choose` k) * (-y)^(n-k)
-        binomialExpansion :: Num a => Int -> a -> Poly a
+        binomialExpansion :: EqNum a => Int -> a -> Poly a
         binomialExpansion n y = Poly (map (binomialTerm y n) [0..n])
 
 displayPoly :: (Ord a, Eq a, Num a) => Poly a -> (a, a) -> a -> [(a, a)]
@@ -268,7 +271,7 @@ Pseudocode:
 euclidianDivision (pa, pb) = if pb == zeroPoly then error "Division by zero polynomial" else goDivide (zeroPoly, pa)
     where
         degB = degreePoly pb
-        leadingCoefficient :: Poly a -> a -- coefficient of the highest power term of the poly
+        leadingCoefficient :: Eq a => Poly a -> a -- coefficient of the highest power term of the poly
         leadingCoefficient (Poly x) = last x
         lcB  = leadingCoefficient pb
         -- goDivide :: (Fractional a, Eq a, Ord a) => (Poly a, Poly a) -> (Poly a, Poly a)

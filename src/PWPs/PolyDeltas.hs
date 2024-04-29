@@ -21,10 +21,8 @@ module PWPs.PolyDeltas
 (
       PolyDelta (..)
     , PolyHeaviside (..)
---    , scalePD
-    , differentiate
-    , integrate
---    , evaluatePD
+--    , differentiate
+--    , integrate
     , convolvePolyDeltas
     , comparePHToZero
     , polyHeavisideRoot
@@ -40,31 +38,46 @@ for probabilities all should be constrained between 0 and 1.
 The position of both Ds and Hs is stored as its basepoint when doing piecewise operations.
 -}
 data PolyDelta a = Pd (Poly a) | D a
-    deriving (Eq, Show)
-
-data PolyHeaviside a = Ph (Poly a) | H a a
-    deriving (Eq, Show)
-
-type MyConstraints a = (Eq a, Num a, Fractional a)
+    deriving (Show)
+instance Eq a => Eq (PolyDelta a)
+    where
+        Pd x == Pd y = x == y
+        D x  == D y  = x == y
+        Pd _ == D _  = False
+        D _  == Pd _ = False
 instance Functor PolyDelta where
     fmap f (D x) = D (f x)
     fmap f (Pd x) = Pd (fmap f x)
+data PolyHeaviside a = Ph (Poly a) | H a a
+    deriving (Show)
+
+instance Eq a => Eq (PolyHeaviside a)
+    where
+        Ph x  == Ph y = x == y
+        H x y == H x' y'  = (x == x') && (y == y')
+        Ph _  == H _ _  = False
+        H _ _ == Ph _ = False
+
 instance Functor PolyHeaviside where
     fmap f (H x y) = H (f x) (f y)
     fmap f (Ph x) = Ph (fmap f x)
 
+type MyConstraints a = (Eq a, Num a, Fractional a)
+type EqNum a = (Eq a, Num a) 
+
+
 plusPD :: (Eq a, Fractional a) => PolyDelta a -> PolyDelta a -> PolyDelta a
 -- Polynomials have zero mass at a single point, so they are dominated by Ds and Hs
 plusPD (Pd x) (Pd y) = Pd (x + y)
-plusPD (Pd _) (D x) = D x
-plusPD (D x) (Pd _) = D x
-plusPD (D x) (D x') = D (x + x')
+plusPD (Pd _) (D x)  = D x
+plusPD (D x) (Pd _)  = D x
+plusPD (D x) (D x')  = D (x + x')
 
 timesPD :: (Eq a, Fractional a) => PolyDelta a -> PolyDelta a -> PolyDelta a
 timesPD (Pd x) (Pd y) = Pd (x * y)
-timesPD (Pd _) (D x) = D x
-timesPD (D x) (Pd _) = D x
-timesPD (D x) (D x') = D (x * x')
+timesPD (Pd _) (D x)  = D x
+timesPD (D x) (Pd _)  = D x
+timesPD (D x) (D x')  = D (x * x')
 
 instance MyConstraints a => Num (PolyDelta a) where
     (+)           = plusPD
@@ -77,15 +90,15 @@ instance MyConstraints a => Num (PolyDelta a) where
 
 plusPH :: (Eq a, Fractional a) => PolyHeaviside a -> PolyHeaviside a -> PolyHeaviside a
 -- Polynomials have zero mass at a single point, so they are dominated by Ds and Hs
-plusPH (Ph x) (Ph y) = Ph (x + y)
-plusPH (Ph _) (H x y) = H x y
-plusPH (H x y) (Ph _) = H x y
+plusPH (Ph x) (Ph y)     = Ph (x + y)
+plusPH (Ph _) (H x y)    = H x y
+plusPH (H x y) (Ph _)    = H x y
 plusPH (H x y) (H x' y') = H (x + x') (y + y')
 
 timesPH :: (Eq a, Fractional a) => PolyHeaviside a -> PolyHeaviside a -> PolyHeaviside a
-timesPH (Ph x) (Ph y) = Ph (x * y)
-timesPH (Ph _) (H x y) = H x y
-timesPH (H x y) (Ph _) = H x y
+timesPH (Ph x) (Ph y)     = Ph (x * y)
+timesPH (Ph _) (H x y)    = H x y
+timesPH (H x y) (Ph _)    = H x y
 timesPH (H x y) (H x' y') = H (x * x') (y * y')
 instance MyConstraints a => Num (PolyHeaviside a) where
     (+)           = plusPH
@@ -97,10 +110,10 @@ instance MyConstraints a => Num (PolyHeaviside a) where
 
 integratePDH :: (Eq a, Fractional a) => PolyDelta a -> PolyHeaviside a
 integratePDH (Pd x) = Ph (integratePoly x)
-integratePDH (D x) = H 0 x
+integratePDH (D x)  = H 0 x
 
 differentiatePHD :: MyConstraints a => PolyHeaviside a -> PolyDelta a
-differentiatePHD (Ph x) = Pd (differentiatePoly x)
+differentiatePHD (Ph x)  = Pd (differentiatePoly x)
 differentiatePHD (H x y) = D (y - x)
 
 instance MyConstraints a => Integrable (PolyDelta a) (PolyHeaviside a)
@@ -111,30 +124,30 @@ instance MyConstraints a => Differentiable (PolyHeaviside a) (PolyDelta a)
     where
         differentiate    = differentiatePHD
 
-scalePD :: Num a => a -> PolyDelta a -> PolyDelta a
+scalePD :: EqNum a => a -> PolyDelta a -> PolyDelta a
 scalePD x (Pd a) = Pd (SP.scalePoly x a)
-scalePD x (D y) = D (x * y)
+scalePD x (D y)  = D (x * y)
 
-evaluatePD :: Num a => a -> PolyDelta a -> [a]
+evaluatePD :: EqNum a => a -> PolyDelta a -> [a]
 evaluatePD point (Pd x) = [SP.evaluatePoly point x]
-evaluatePD _ (D x) = [x]
+evaluatePD _ (D x)      = [x]
 
 boostPD :: MyConstraints a => a -> PolyDelta a -> PolyDelta a
 boostPD x (Pd y) = Pd y + Pd (makePoly x)
-boostPD _ (D y) = D y
+boostPD _ (D y)  = D y
 instance MyConstraints a => Evaluable a (PolyDelta a)
     where
         evaluate  = evaluatePD
         boost     = boostPD
         scale     = scalePD
 
-scalePH :: Num a => a -> PolyHeaviside a -> PolyHeaviside a
-scalePH x (Ph a) = Ph (SP.scalePoly x a)
+scalePH :: EqNum a => a -> PolyHeaviside a -> PolyHeaviside a
+scalePH x (Ph a)  = Ph (SP.scalePoly x a)
 scalePH x (H y z) = H (x * y) (x * z)
 
-evaluatePH :: Num a => a -> PolyHeaviside a -> [a]
+evaluatePH :: EqNum a => a -> PolyHeaviside a -> [a]
 evaluatePH point (Ph x) = [SP.evaluatePoly point x]
-evaluatePH _ (H x y) = [x, y]
+evaluatePH _ (H x y)    = [x, y]
 
 boostPH :: MyConstraints a => a -> PolyHeaviside a -> PolyHeaviside a
 boostPH x (Ph y) = Ph y + Ph (makePoly x)
