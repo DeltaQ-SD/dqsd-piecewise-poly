@@ -31,8 +31,12 @@ module PWPs.SimplePolynomials
     , displayPoly
 ) where
 
-newtype Eq a => Poly a = Poly [a]
-    deriving (Eq,Show,Functor,Foldable)
+newtype Poly a = Poly [a]
+    deriving (Show,Functor,Foldable)
+
+instance Eq a => Eq (Poly a)
+    where
+        Poly x == Poly y = x == y
 
 type EqNum a = (Eq a, Num a) 
 
