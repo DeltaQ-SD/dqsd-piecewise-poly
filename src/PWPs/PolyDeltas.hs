@@ -163,7 +163,7 @@ aggregate ((bx, x):(by, y):xs)
     | x == y    = aggregate $ (bx, x):xs -- throw away the second basepoint
     | otherwise = (bx, x) : aggregate ((by, y):xs)
 
-convolvePolyDeltas :: (Show a, Num a, Fractional a, Ord a)
+convolvePolyDeltas :: (Num a, Fractional a, Ord a)
                    => (a, a, PolyDelta a) -> (a, a, PolyDelta a) -> [(a, PolyDelta a)]
 {- |
 When both arguments are polynomials, we check the intervals are non-zero then use convolvePolys and just map the type.
@@ -187,7 +187,7 @@ convolvePolyDeltas (lf, uf, D f) (lg, ug, D g) -- both deltas
     | lg + lf == 0          = [(0, D (f * g)), (0, Pd zeroPoly)] -- degenerate case of deltas at zero
     | otherwise             = [(0, Pd zeroPoly), (lg + lf, D (f * g)), (0, Pd zeroPoly)]
 
-instance (Show a, Num a, Fractional a, Ord a) => CompactConvolvable a (PolyDelta a)
+instance (Num a, Fractional a, Ord a) => CompactConvolvable a (PolyDelta a)
     where
         convolveIntervals = convolvePolyDeltas
 
