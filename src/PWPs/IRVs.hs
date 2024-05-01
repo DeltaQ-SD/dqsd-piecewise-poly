@@ -63,7 +63,7 @@ import PWPs.PolyDeltas
 import PWPs.SimplePolynomials (Poly (..), makePoly, zeroPoly)
 import PWPs.ConvolutionClasses 
 
-type MyConstraints a = (Fractional a, Ord a, Num a, Enum a, Eq a)
+type MyConstraints a = (Show a, Fractional a, Ord a, Num a, Enum a, Eq a)
 type DistributionD a = Pieces a (PolyDelta a)
 type DistributionH a = Pieces a (PolyHeaviside a)
 
@@ -83,7 +83,7 @@ invert :: (Eq a, Ord a, Fractional a) => DistributionH a -> DistributionH a
 -- | Construct the inverse CDF by subtracting the CDF from 1
 invert = applyObject (-) (Ph $ makePoly 1)
 
-shiftIRV :: (Fractional a, Ord a, Num a, Enum a, Eq a, Differentiable (DistributionH a) (DistributionD a)) => a -> IRV a -> IRV a
+shiftIRV :: (Show a, Fractional a, Ord a, Num a, Enum a, Eq a, Differentiable (DistributionH a) (DistributionD a)) => a -> IRV a -> IRV a
 -- | Make a delta and convolve with it
 shiftIRV s x = constructDelta s PWPs.IRVs.<+> PDF (makePDF x)
 
@@ -112,7 +112,7 @@ constructDelta x
 
 -- | PDF with zero value everywhere
 zeroPDF :: MyConstraints a => IRV a
-zeroPDF = PDF (makePieces [(0, Pd $ makePoly 0)])
+zeroPDF = PDF (makePieces [(0, Pd $ zeroPoly)])
 
 monotonicFromZero :: (Ord a, Num a) => [a] -> Bool
 monotonicFromZero xs = if null xs then error "Empty list" else head xs == 0 && monotonic xs
@@ -198,7 +198,7 @@ decomposeIRV numPoints ys = zip basepoints values
             where
                 new = prev + sp
         -- evaluate at the the basepoints - will get a list at each point, take the first
-        values = map (head . (`evaluateAtApoint` ys)) basepoints
+        values = map (head . (`evaluate` ys)) basepoints
 
 firstToFinish :: MyConstraints a => IRV a -> IRV a -> IRV a
 firstToFinish x y = CDF (cdfOfx + cdfOfy - (cdfOfx * cdfOfy))
@@ -268,7 +268,7 @@ support :: (Eq a, Fractional a) => IRV a -> (a, a)
 support (PDF x) = piecewiseSupport x
 support (CDF x) = piecewiseSupport x
 
-centiles :: (Fractional a, Ord a, Num a, Enum a, Eq a, Evaluable a (PolyHeaviside a)) => [a] -> IRV a -> [Maybe a]
+centiles :: (Show a, Fractional a, Ord a, Num a, Enum a, Eq a, Evaluable a (PolyHeaviside a)) => [a] -> IRV a -> [Maybe a]
 -- | Given a list of probabiity values, return the times at which each value is reached; 
 -- if it is never reached, return Nothing in that position
 centiles probabilities dQ

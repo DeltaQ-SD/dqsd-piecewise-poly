@@ -25,14 +25,6 @@ module PWPs.ConvolutionClasses
 )
 where
 
-{- may as well just use Num
-class Calculable a where
-    plus          :: a -> a -> a
-    times         :: a -> a -> a
-    minus         :: a -> a
-    zero          :: a
-    fromInteger   :: Integer -> a
--}
 class Integrable a b where
     integrate     :: a -> b
 

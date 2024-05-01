@@ -21,10 +21,8 @@ module PWPs.PolyDeltas
 (
       PolyDelta (..)
     , PolyHeaviside (..)
---    , differentiate
---    , integrate
-    , convolvePolyDeltas
-    , comparePHToZero
+--    , convolvePolyDeltas
+--    , comparePHToZero
     , polyHeavisideRoot
 )
 where
@@ -65,7 +63,6 @@ instance Functor PolyHeaviside where
 type MyConstraints a = (Eq a, Num a, Fractional a)
 type EqNum a = (Eq a, Num a) 
 
-
 plusPD :: (Eq a, Fractional a) => PolyDelta a -> PolyDelta a -> PolyDelta a
 -- Polynomials have zero mass at a single point, so they are dominated by Ds and Hs
 plusPD (Pd x) (Pd y) = Pd (x + y)
@@ -85,7 +82,7 @@ instance MyConstraints a => Num (PolyDelta a) where
     negate        = fmap negate
     abs           = undefined
     signum        = undefined
-    fromInteger n = D $ Prelude.fromInteger n
+    fromInteger n = Pd $ makePoly $ Prelude.fromInteger n
 
 
 plusPH :: (Eq a, Fractional a) => PolyHeaviside a -> PolyHeaviside a -> PolyHeaviside a
@@ -218,18 +215,18 @@ instance (Num a, Eq a, Fractional a) => Mergeable (PolyDelta a)
     where
         mergeObject a b = case (a, b) of
             (Pd x, Pd y) -> if x == y then Just (Pd y) else Nothing
-            (D x, Pd y) -> if x == 0 then Just (Pd y) else Nothing
-            (D x, D y) -> Just (D (x + y))
-            (_, _) -> Nothing
+            (D x, Pd y)  -> if x == 0 then Just (Pd y) else Nothing
+            (D x, D y)   -> Just (D (x + y))
+            (_, _)       -> Nothing
         zero = Pd zeroPoly
 
 instance (Num a, Eq a, Fractional a) => Mergeable (PolyHeaviside a)
     where
         mergeObject a b = case (a, b) of
-            (Ph x, Ph y) -> if x == y then Just (Ph y) else Nothing
-            (H x y, Ph z) -> if x == y then Just (Ph z) else Nothing
+            (Ph x, Ph y)     -> if x == y then Just (Ph y) else Nothing
+            (H x y, Ph z)    -> if x == y then Just (Ph z) else Nothing
             (H x y, H x' y') -> Just (H (x + x') (y + y'))
-            (_, _) -> Nothing
+            (_, _)           -> Nothing
         zero = Ph zeroPoly
 
 {-|
@@ -242,16 +239,16 @@ polyHeavisideRoot  _ _ (l, u) (H _ _) = if l /= u then error "Non-zero Heaviside
 polyHeavisideRoot  e x (l, u) (Ph p) = findPolyRoot e (l, u) (p - makePoly x)
 
 displayPolyDelta :: (Ord a, Num a, Eq a, Fractional a) => a -> (a, a, PolyDelta a) -> Either (a,a) [(a, a)]
-displayPolyDelta _ (l, u, D x)   = if l /= u then error "Non-zero delta interval"
+displayPolyDelta _ (l, u, D x)  = if l /= u then error "Non-zero delta interval"
                                     else Left (l, x)
-displayPolyDelta s (l, u, Pd p)   = if l >= u then error "Invalid polynomial interval"
+displayPolyDelta s (l, u, Pd p) = if l >= u then error "Invalid polynomial interval"
                                     else Right (displayPoly p (l, u) s)
 instance (Ord a, Num a, Eq a, Fractional a) => Displayable a (PolyDelta a)
     where
         displayObject = displayPolyDelta
 
 displayPolyHeaviside  :: (Ord a, Num a, Eq a, Fractional a) => a -> (a, a, PolyHeaviside a) -> Either (a,a) [(a, a)]
-displayPolyHeaviside  s (l, u, Ph p)   = if l >= u then error "Invalid polynomial interval"
+displayPolyHeaviside  s (l, u, Ph p)  = if l >= u then error "Invalid polynomial interval"
                                     else Right (displayPoly p (l, u) s)
 displayPolyHeaviside  _ (l, u, H x y) = if l /= u then error "Non-zero heaviside interval"
                                     else Left (l, y - x)

@@ -5,7 +5,7 @@
 {-|
 Module      : Piecewise
 Description : Sequences of objects defined over contiguous intervals
-Copyright   : (c) Peter Thompson, 2023
+Copyright   : (c) Peter Thompson, 2024
 License     : BSD-2-Clause
 Maintainer  : peter.thompson@pnsol.com
 Stability   : experimental
@@ -32,16 +32,14 @@ module PWPs.Piecewise
     , combinePieces
     , zero
     , (><)
-    , differentiate
-    , integrate
     , (<+>)
     , piecesFinalValue
-    , evaluateAtApoint
     , monotonic
     , comparePW
     , piecewiseSupport
     , applyObject
     , displayPolyDeltaIntervals
+    , alignPieces
 ) where
 
 import PWPs.ConvolutionClasses
@@ -162,11 +160,11 @@ makePieces xs
 
 instance (Num a,Eq a, Ord a, Mergeable b, Num b) => Num (Pieces a b)
     where
-        (+)             = combinePieces (+) 
-        (*)             = combinePieces (*) 
-        negate          = fmap negate 
+        (+)             = combinePieces (+)
+        (*)             = combinePieces (*)
+        negate          = fmap negate
         abs             = undefined
-        signum          = undefined        
+        signum          = undefined
         fromInteger n   = Pieces [Piece {basepoint = 0 :: a, object = fromInteger n}]
 
 instance (Num a, Eq a, Ord a, Differentiable b c, Mergeable c, Evaluable a b) => Differentiable (Pieces a b) (Pieces a c)
