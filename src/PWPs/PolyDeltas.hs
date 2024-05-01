@@ -21,13 +21,12 @@ module PWPs.PolyDeltas
 (
       PolyDelta (..)
     , PolyHeaviside (..)
---    , convolvePolyDeltas
---    , comparePHToZero
     , polyHeavisideRoot
 )
 where
 import PWPs.ConvolutionClasses
 import PWPs.SimplePolynomials as SP
+import Debug.Trace
 
 {- |
 A PolyDelta either a polynomial, a (shifted, scaled) Delta or a (shifted, scaled) Heaviside. 
@@ -103,7 +102,7 @@ instance MyConstraints a => Num (PolyHeaviside a) where
     negate        = fmap negate
     abs           = undefined
     signum        = undefined
-    fromInteger _ = undefined
+    fromInteger n = Ph $ makePoly $ Prelude.fromInteger n
 
 integratePDH :: (Eq a, Fractional a) => PolyDelta a -> PolyHeaviside a
 integratePDH (Pd x) = Ph (integratePoly x)
@@ -164,7 +163,7 @@ aggregate ((bx, x):(by, y):xs)
     | x == y    = aggregate $ (bx, x):xs -- throw away the second basepoint
     | otherwise = (bx, x) : aggregate ((by, y):xs)
 
-convolvePolyDeltas :: (Num a, Fractional a, Ord a)
+convolvePolyDeltas :: (Show a, Num a, Fractional a, Ord a)
                    => (a, a, PolyDelta a) -> (a, a, PolyDelta a) -> [(a, PolyDelta a)]
 {- |
 When both arguments are polynomials, we check the intervals are non-zero then use convolvePolys and just map the type.
@@ -186,8 +185,9 @@ convolvePolyDeltas (lf, uf, D f) (lg, ug, D g) -- both deltas
     | lf /= uf || lg /= ug  = error "Non-zero delta interval"
     | f * g == 0            = [(0, Pd zeroPoly)] -- convolving with a zero-sized delta gives nothing
     | lg + lf == 0          = [(0, D (f * g)), (0, Pd zeroPoly)] -- degenerate case of deltas at zero
-convolvePolyDeltas (_,_,_) (_,_,_) = error "Unexpected convolution case" -- stops warning of incomplete patterns!
-instance (Num a, Fractional a, Ord a) => CompactConvolvable a (PolyDelta a)
+    | otherwise             = [(0, Pd zeroPoly), (lg + lf, D (f * g)), (0, Pd zeroPoly)]
+
+instance (Show a, Num a, Fractional a, Ord a) => CompactConvolvable a (PolyDelta a)
     where
         convolveIntervals = convolvePolyDeltas
 
