@@ -185,7 +185,7 @@ convolvePolyDeltas (lf, uf, D f) (lg, ug, D g) -- both deltas
     | lf /= uf || lg /= ug  = error "Non-zero delta interval"
     | f * g == 0            = [(0, Pd zeroPoly)] -- convolving with a zero-sized delta gives nothing
     | lg + lf == 0          = [(0, D (f * g)), (0, Pd zeroPoly)] -- degenerate case of deltas at zero
-    | otherwise             = [(0, Pd zeroPoly), (lg + lf, D (f * g)), (0, Pd zeroPoly)]
+    | otherwise             = [(0, Pd zeroPoly), (lg + lf, D (f * g)), (lg + lf, Pd zeroPoly)]
 
 instance (Num a, Fractional a, Ord a) => CompactConvolvable a (PolyDelta a)
     where
