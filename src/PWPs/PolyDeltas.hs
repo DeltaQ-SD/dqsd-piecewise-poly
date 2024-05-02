@@ -177,7 +177,7 @@ convolvePolyDeltas (lf, uf, D f) (lg, ug, Pd g)
     | lf /= uf     = error "Non-zero delta interval"
     | ug < lg      = error "Negative interval width"
     | f == 0       = [(0, Pd zeroPoly)] -- convolving with a zero-sized delta gives nothing
-    | lg + lf == 0 = [(0, scalePD f (Pd g)), (ug, Pd zeroPoly)] -- degenerate case of delta at zero
+    | lf == 0      = [(0, scalePD f (Pd g)), (ug, Pd zeroPoly)] -- degenerate case of delta at zero
     -- Shift the poly by the basepoint of the delta and insert a new initial zero interval
     | otherwise    = aggregate [(0, Pd zeroPoly), (lg + lf, scalePD f (Pd (shiftPoly lf g))), (ug + lf, Pd zeroPoly)]
 convolvePolyDeltas (lf, uf, Pd f) (lg, ug, D g) = convolvePolyDeltas (lg, ug, D g) (lf, uf, Pd f)  -- commutative
