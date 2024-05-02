@@ -279,7 +279,8 @@ centiles probabilities dQ
     | otherwise = findCentiles (probMass dQ) probabilities (getPieces $ makeCDF dQ)
         where
             -- need to specify the precision with which we report centiles
-            eps = snd (support dQ) - fst (support dQ) / 1000 -- arbitrary parameter!
+            precisionFraction = 1000 -- arbitrary parameter!
+            eps = (snd (support dQ) - fst (support dQ)) / precisionFraction
             --findCentiles :: a' -> [a'] -> [Piece a' (PolyHeaviside a')] -> [Maybe a']
             -- consume the list of probabilities and build the list of centiles
             findCentiles _ [] _ = [] -- stop when we have run out of centiles to evaluate

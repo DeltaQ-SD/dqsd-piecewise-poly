@@ -26,6 +26,7 @@ module PWPs.PolyDeltas
 where
 import PWPs.ConvolutionClasses
 import PWPs.SimplePolynomials as SP
+import Debug.Trace
 
 {- |
 A PolyDelta either a polynomial, a (shifted, scaled) Delta or a (shifted, scaled) Heaviside. 
@@ -61,6 +62,7 @@ instance Functor PolyHeaviside where
 type MyConstraints a = (Eq a, Num a, Fractional a)
 type EqNum a = (Eq a, Num a) 
 type OrdNumEqFrac a = (Ord a, Num a, Eq a, Fractional a) 
+type OrdNumEqFracShow a = (Ord a, Num a, Eq a, Fractional a, Show a) 
 
 plusPD :: (Eq a, Fractional a) => PolyDelta a -> PolyDelta a -> PolyDelta a
 -- Polynomials have zero mass at a single point, so they are dominated by Ds and Hs
