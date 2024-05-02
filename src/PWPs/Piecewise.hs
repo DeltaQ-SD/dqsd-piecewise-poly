@@ -279,7 +279,7 @@ piecewiseSupport :: (Mergeable b, Eq b) => Pieces a b -> (a, a)
 piecewiseSupport x = (start, end)
     where
         xs = getPieces x -- reduce to a list
-        start = basepoint (head (dropWhile (\y -> object y == zero) xs))
+        start = if length xs == 1 then basepoint (head xs) else basepoint (head (dropWhile (\y -> object y == zero) xs))
         end   = basepoint $ last xs
 
 applyObject :: (b -> b -> b) -> b -> Pieces a b -> Pieces a b
