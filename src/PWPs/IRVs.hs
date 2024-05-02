@@ -63,7 +63,7 @@ import PWPs.PolyDeltas
 import PWPs.SimplePolynomials (Poly (..), makePoly)
 import PWPs.ConvolutionClasses
 
-type MyConstraints a = (Fractional a, Ord a, Num a, Enum a, Eq a)
+type MyConstraints a = (Fractional a, Ord a, Num a, Enum a, Eq a) 
 type DistributionD a = Pieces a (PolyDelta a)
 type DistributionH a = Pieces a (PolyHeaviside a)
 
@@ -179,7 +179,8 @@ asDiscretePDF :: MyConstraints a => IRV a -> Int -> [Either (a,a) [(a, a)]]
 asDiscretePDF x n = if n <= 0 then error "Invalid number of points"
                               else displayPolyDeltaIntervals (makePDF x) spacing
     where
-        spacing = (snd (support x) - fst (support x)) / Prelude.fromIntegral n
+        width = snd (support x) - fst (support x)
+        spacing = width / Prelude.fromIntegral n
 
 decomposeIRV :: (Ord a, Num a, Fractional a) => Int -> DistributionH a -> [(a, a)]
 decomposeIRV numPoints ys = zip basepoints values
@@ -233,7 +234,7 @@ probChoice :: MyConstraints a => a -> IRV a -> IRV a -> IRV a
 The probability is for choosing the left branch.
 We can do this on either PDFs or CDFs; if we have CDFs deliver a CDF, if we have both PDFs or one of each, deliver a PDF.
 -}
-probChoice p x y =
+probChoice p x y = if (p < 0) || (p > 1) then error "Invalid probability value" else
     case (x,y) of
         (CDF a, CDF b) -> CDF ((p >< a) + ((1 - p) >< b))
         _              -> PDF ((p >< makePDF x) + ((1 - p) >< makePDF y))
@@ -268,7 +269,7 @@ support :: (Eq a, Fractional a) => IRV a -> (a, a)
 support (PDF x) = piecewiseSupport x
 support (CDF x) = piecewiseSupport x
 
-centiles :: (Fractional a, Ord a, Num a, Enum a, Eq a, Evaluable a (PolyHeaviside a)) => [a] -> IRV a -> [Maybe a]
+centiles :: (Fractional a, Ord a, Num a, Enum a, Eq a, Evaluable a (PolyHeaviside a)) => [a] -> IRV a -> [Maybe a] 
 -- | Given an ordered list of probabiity values, return the times at which each value is reached; 
 -- if it is never reached, return Nothing in that position
 centiles probabilities dQ
