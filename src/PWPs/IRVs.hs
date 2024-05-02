@@ -60,8 +60,8 @@ where
 
 import PWPs.Piecewise
 import PWPs.PolyDeltas
-import PWPs.SimplePolynomials (Poly (..), makePoly, zeroPoly)
-import PWPs.ConvolutionClasses 
+import PWPs.SimplePolynomials (Poly (..), makePoly)
+import PWPs.ConvolutionClasses
 
 type MyConstraints a = (Fractional a, Ord a, Num a, Enum a, Eq a)
 type DistributionD a = Pieces a (PolyDelta a)
@@ -71,10 +71,10 @@ data IRV a = PDF (DistributionD a) | CDF (DistributionH a)
     deriving (Eq, Show)
 
 top :: (Ord a, Num a) => IRV a
-top = PDF (makePieces [(0, D 1), (0, Pd (makePoly 0))])
+top = PDF (makePieces [(0, D 1), (0, Pd 0)])
 
 bottom :: (Ord a, Num a) => IRV a
-bottom = CDF (makePieces [(0, Ph (makePoly 0))])
+bottom = CDF (makePieces [(0, Ph 0)])
 
 cumulativeMass :: (Ord a, Enum a, Num a, Fractional a, Evaluable a (DistributionH a), Integrable (DistributionD a) (DistributionH a)) => IRV a -> a -> a
 cumulativeMass x p = last $ evaluate p (makeCDF x)
@@ -101,7 +101,7 @@ makeCDF (PDF x) = integrate x
 constructUniform :: MyConstraints a => a -> IRV a
 -- | Construct a PDF with uniform probability from 0 to the given value
 constructUniform x = if x <= 0 then error "Invalid interval"
-                     else PDF (makePieces [(0, Pd (makePoly (1/x))), (x, Pd zeroPoly)])
+                     else PDF (makePieces [(0, Pd (makePoly (1/x))), (x, Pd 0)])
 
 constructDelta :: MyConstraints a => a -> IRV a
 -- | Construct a PDF that is a delta function at the given value
@@ -112,7 +112,7 @@ constructDelta x
 
 -- | PDF with zero value everywhere
 zeroPDF :: MyConstraints a => IRV a
-zeroPDF = PDF (makePieces [(0, Pd $ zeroPoly)])
+zeroPDF = PDF (makePieces [(0, Pd 0)])
 
 monotonicFromZero :: (Ord a, Num a) => [a] -> Bool
 monotonicFromZero xs = if null xs then error "Empty list" else head xs == 0 && monotonic xs
@@ -269,38 +269,33 @@ support (PDF x) = piecewiseSupport x
 support (CDF x) = piecewiseSupport x
 
 centiles :: (Fractional a, Ord a, Num a, Enum a, Eq a, Evaluable a (PolyHeaviside a)) => [a] -> IRV a -> [Maybe a]
--- | Given a list of probabiity values, return the times at which each value is reached; 
+-- | Given an ordered list of probabiity values, return the times at which each value is reached; 
 -- if it is never reached, return Nothing in that position
 centiles probabilities dQ
     | null probabilities            = error "Empty probability list"
     | not (monotonic probabilities) = error "Probabilities not monotonic"
     | last probabilities > 1        = error "Probability exceeds one"
-    -- deal with degenerate case where the support has zero width: all centiles the same value
-    | otherwise = if eps == 0 then replicate (length probabilities) (Just $ fst (support dQ))
-                              else findCentiles probabilities
+    | otherwise = findCentiles (probMass dQ) probabilities (getPieces $ makeCDF dQ)
         where
-            intervals = getPieces $ makeCDF dQ
+            -- need to specify the precision with which we report centiles
             eps = snd (support dQ) - fst (support dQ) / 1000 -- arbitrary parameter!
-            -- findCentiles :: [a] -> [Maybe a]
+            --findCentiles :: a' -> [a'] -> [Piece a' (PolyHeaviside a')] -> [Maybe a']
             -- consume the list of probabilities and build the list of centiles
-            findCentiles [] = []
-            findCentiles (x:xs) = if x > probMass dQ then Nothing : findCentiles xs
-                                   else findRoot x intervals : findCentiles xs
-            -- Work along cumulative distribution until we find the interval containing the value,  
-            -- then get the root of the polydelta
-            -- findRoot :: (Ord a, Enum a, Eq a, Fractional a, Num a) => a -> [Piece a (PolyDelta a)] -> a
-            findRoot _ [] = error "Empty distribution"
-            -- if we have only one piece its object must be constant, so report its basepoint as the root
-            findRoot _ [final] = Just (basepoint final)
-            -- hereon we must have at least two pieces: if the value is in the range of the current interval,
-            -- find the root, otherwise move on to the next piece
-            findRoot p (first:rest@(second:_)) = 
+            findCentiles _ [] _ = [] -- stop when we have run out of centiles to evaluate
+            findCentiles maxProb (x:xs) y@[final] =
+            -- if we have only one piece its object must be constant, so report its basepoint as the root,
+            -- unless we are beyond the tangible mass, in whioch case report Nothing
+                (if x > maxProb then Nothing else Just (basepoint final)) : findCentiles maxProb xs y
+            -- hereon we must have at least two pieces, so we can ask whether the value is in the range of the current interval,
+            findCentiles maxProb cs@(x : xs) remaining@(first : rest@(second : _))
+                | x > maxProb = Nothing : findCentiles maxProb xs remaining
                 -- if the value is in the range of the current interval,
-                if firstValue <= p && p <= secondValue
-                -- find the root,
-                then polyHeavisideRoot eps p (basepoint first, basepoint second) (object first)
-                -- otherwise move on to the next piece
-                else findRoot p rest
+                | firstValue <= x && x <= secondValue
+                -- find the precise root, and carry on to the next centile
+                    = polyHeavisideRoot eps x (basepoint first, basepoint second) (object first) : findCentiles maxProb xs remaining
+                -- otherwise no further centiles can be in this piece, so move on to the next piece
+                | otherwise = findCentiles maxProb cs rest
                 where
-                    firstValue  = head $ evaluate (basepoint first) (object first)
+                    firstValue = head $ evaluate (basepoint first) (object first)
                     secondValue = last $ evaluate (basepoint second) (object first)
+            findCentiles _ _ _ = error "Unexpected centile case"
