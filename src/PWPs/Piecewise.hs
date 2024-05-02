@@ -5,7 +5,7 @@
 {-|
 Module      : Piecewise
 Description : Sequences of objects defined over contiguous intervals
-Copyright   : (c) Peter Thompson, 2023
+Copyright   : (c) Peter Thompson, 2024
 License     : BSD-2-Clause
 Maintainer  : peter.thompson@pnsol.com
 Stability   : experimental
@@ -30,21 +30,16 @@ module PWPs.Piecewise
     , Piece (..)
     , makePieces
     , combinePieces
-    , plus
-    , times
-    , minus
     , zero
     , (><)
-    , differentiate
-    , integrate
     , (<+>)
     , piecesFinalValue
-    , evaluateAtApoint
     , monotonic
     , comparePW
     , piecewiseSupport
     , applyObject
     , displayPolyDeltaIntervals
+    , alignPieces
 ) where
 
 import PWPs.ConvolutionClasses
@@ -106,34 +101,34 @@ alignPieces x' y' = Pieces (doAlign (getPieces x') (getPieces y'))
             | bx0 == by0 -- basepoints are coincident, so simply pair the objects 
                 = [Piece {basepoint = bx0, object = (ox0, oy0)}]
             | bx0  < by0 -- pair the first x object with a presumed inital zero y object and pair the remainder
-                = [Piece {basepoint = bx0, object = (ox0, zeroObject)}, Piece {basepoint = by0, object = (ox0, oy0)}]
+                = [Piece {basepoint = bx0, object = (ox0, zero)}, Piece {basepoint = by0, object = (ox0, oy0)}]
             | bx0  > by0 -- pair the y object with a presumed inital zero x initial object and pair the remainder
-                = [Piece {basepoint = by0, object = (zeroObject, oy0)}, Piece {basepoint = bx0, object = (ox0, oy0)}]
+                = [Piece {basepoint = by0, object = (zero, oy0)}, Piece {basepoint = bx0, object = (ox0, oy0)}]
 
         -- second list has only one element, so its 'next' basepoint is infinity
         doAlign x@(Piece {basepoint = bx0, object = ox0}:xs) y@[Piece {basepoint = by0, object = oy0}]
             | bx0 == by0 -- basepoints are coincident, so just pair the y object with all the xs
                 = fmap (\(Piece c d) -> Piece c (d, oy0)) x
             | bx0  < by0 -- y basepoint is after the start of x, so pair the first x object with a presumed initial zero y object and move on
-                = Piece {basepoint = bx0, object = (ox0, zeroObject)}:doAlign xs y
+                = Piece {basepoint = bx0, object = (ox0, zero)}:doAlign xs y
             | bx0  > by0 -- pair the y object with a presumed zero x initial object and the remaining xs
-                = Piece {basepoint = by0, object = (zeroObject, oy0)}:fmap (\(Piece c d) -> Piece c (d, oy0)) x
+                = Piece {basepoint = by0, object = (zero, oy0)}:fmap (\(Piece c d) -> Piece c (d, oy0)) x
 
         -- first list has only one element, so its 'next' basepoint is infinity
         doAlign x@[Piece {basepoint = bx0, object = ox0}] y@(Piece {basepoint = by0, object = oy0}:ys)
             | bx0 == by0 -- basepoints are coincident, so just pair the x object with all the ys
                 = fmap (\(Piece c d) -> Piece c (ox0, d)) y
             | bx0  > by0 -- x basepoint is after the start of y, so pair the first y object with a presumed initial zero x object and move on
-                = Piece {basepoint = by0, object = (zeroObject, oy0)}:doAlign x ys
+                = Piece {basepoint = by0, object = (zero, oy0)}:doAlign x ys
             | bx0  < by0 -- pair the x object with a presumed zero y initial object and the remaining xs
-                = Piece {basepoint = bx0, object = (ox0, zeroObject)}:fmap (\(Piece c d) -> Piece c (ox0, d)) y
+                = Piece {basepoint = bx0, object = (ox0, zero)}:fmap (\(Piece c d) -> Piece c (ox0, d)) y
 
         -- both lists have more than one element: first consider the alignment of the initial basepoints and then the next pair
         doAlign x@(x0:x1s@(x1:_)) y@(y0:y1s@(y1:_))
             | bx0  < by0 -- y basepoint is after the start of x, so pair the first x object with a presumed initial zero y object and move on
-                = Piece {basepoint = bx0, object = (ox0, zeroObject)}:doAlign x1s y
+                = Piece {basepoint = bx0, object = (ox0, zero)}:doAlign x1s y
             | bx0  > by0 -- pair the y object with a presumed zero x initial object and the remaining xs
-                = Piece {basepoint = by0, object = (zeroObject, oy0)}:doAlign x y1s
+                = Piece {basepoint = by0, object = (zero, oy0)}:doAlign x y1s
             -- the initial basepoints must now be coincident, so consider the next basepoints
             -- If the second points are not identical, split the longer piece so that they now are and try again
             | bx1 > by1 = doAlign (x0:makePiece (by1, ox0):x1s) y
@@ -163,28 +158,33 @@ makePieces xs
     | not (monotonic (map fst xs))       = error "Basepoints were not in order"
     | otherwise                          = Pieces (map makePiece xs)
 
-instance (Num a, Eq a, Ord a, Calculable b, Mergeable b, Evaluable a b) => Calculable (Pieces a b)
+instance (Num a,Eq a, Ord a, Mergeable b, Num b) => Num (Pieces a b)
     where
-        plus            = combinePieces plus
-        times           = combinePieces times
-        minus           = fmap minus
-        zero            = Pieces [Piece {basepoint = 0 :: a, object = zeroObject}]
-        fromInteger n   = Pieces [Piece {basepoint = 0 :: a, object = PWPs.ConvolutionClasses.fromInteger n}]
+        (+)             = combinePieces (+)
+        (*)             = combinePieces (*)
+        negate          = fmap negate
+        abs             = undefined
+        signum          = undefined
+        fromInteger n   = Pieces [Piece {basepoint = 0 :: a, object = fromInteger n}]
+
+instance (Num a, Eq a, Ord a, Differentiable b c, Mergeable c, Evaluable a b) => Differentiable (Pieces a b) (Pieces a c)
+    where
         {- | Piecewise differentiation is straightforward: just differentiate all the objects
         Since constants all differentate to zero, it is worth checking whether pieces can be merged.   
         -}
         differentiate   = mergePieces . fmap differentiate
+instance (Num a, Eq a, Ord a, Integrable b c, Mergeable c, Evaluable a c) => Integrable (Pieces a b) (Pieces a c)
+    where
         integrate       = integratePieces
-
 {- |
 For piecewise integration we need to evaluate at the boundary points to make the pieces join up.
 We need to pass the integrated object to the next interation so that it can be evaluated on the basepoint
 and to recognise deltas and pass them through as well as evaluating them
 -}
-integratePieces :: (Num a, Eq a, Ord a, Calculable b, Evaluable a b) => Pieces a b -> Pieces a b
+integratePieces :: (Num a, Eq a, Ord a, Integrable b c, Evaluable a c) => Pieces a b -> Pieces a c
 integratePieces ps = Pieces (goInt 0 (disaggregate (getPieces ps)))
     where
-        goInt :: (Num a, Eq a, Ord a, Calculable b, Evaluable a b) => a -> [(a, a, b)] -> [Piece a b]
+        goInt :: (Num a, Eq a, Ord a, Integrable b c, Evaluable a c) => a -> [(a, a, b)] -> [Piece a c]
         goInt _ [] = [] -- stop when the list of pieces is empty 
         {- 
            We evaluate each integrated object at the initial and final points of the interval.
@@ -217,7 +217,7 @@ evaluateAtApoint point as
     where
         pas                 = getPieces as
         goEval _ []         = error "Empty piece list"
-        goEval _ [_]        = evaluate (basepoint (last pas)) (object (last pas)) 
+        goEval _ [_]        = evaluate (basepoint (last pas)) (object (last pas))
         goEval p (x1:x2:xs) = if (basepoint x1 <= p) && (p < basepoint x2)
                                 then evaluate p (object x1)
                                 else goEval p (x2:xs)
@@ -237,11 +237,11 @@ instance (Num a, Eq a, Ord a, Evaluable a b) => Evaluable a (Pieces a b)
 Piecwise convolution requires convolving the pieces pairwise and then summing the results,
 i.e. convolve every piece with every other piece and combine the results.
 -}
-(<+>) :: (Ord a, Num a, Enum a, Fractional a, Calculable b, Mergeable b, Evaluable a b, CompactConvolvable a b) => Pieces a b -> Pieces a b -> Pieces a b
+(<+>) :: (Ord a, Num a, Enum a, Fractional a, Num b, Mergeable b, Evaluable a b, CompactConvolvable a b) => Pieces a b -> Pieces a b -> Pieces a b
 infix 7 <+>
 (<+>) (Pieces []) _ = error "Empty piece list"
 (<+>) _ (Pieces []) = error "Empty piece list"
-(<+>) as bs = foldr plus zero [Pieces (map makePiece (convolveIntervals a b)) | a <- das, b <- dbs]
+(<+>) as bs = sum [Pieces (map makePiece (convolveIntervals a b)) | a <- das, b <- dbs]
     where das = disaggregate (getPieces as)
           dbs = disaggregate (getPieces bs)
 
@@ -251,7 +251,7 @@ disaggregate [] = error "Empty piece list"
 disaggregate [x] = [(basepoint x, 2 * basepoint x, object x)] -- turn the last piece into an 'infinite' interval
 disaggregate (x:xs@(x':_)) = (basepoint x, basepoint x', object x) : disaggregate xs
 
-displayPolyDeltaIntervals :: (Ord a, Enum a, Eq a, Fractional a, Num a, Displayable a b) => Pieces a b -> a -> [Either (a,a) [(a, a)]] 
+displayPolyDeltaIntervals :: (Ord a, Enum a, Eq a, Fractional a, Num a, Displayable a b) => Pieces a b -> a -> [Either (a,a) [(a, a)]]
 displayPolyDeltaIntervals as spacing = map (displayObject spacing) $ disaggregate (getPieces as)
 
 (><) :: (Eq a, Num a, Evaluable a b) => a -> Pieces a b -> Pieces a b
@@ -259,9 +259,9 @@ displayPolyDeltaIntervals as spacing = map (displayObject spacing) $ disaggregat
 infix 7 ><
 (><) = fmap . scale
 
-comparePW :: (Fractional a, Eq a, Ord a, Comparable a b, Calculable b, Mergeable b, Evaluable a b) => Pieces a b -> Pieces a b -> Maybe Ordering
+comparePW :: (Fractional a, Eq a, Ord a, Comparable a b, Num b, Mergeable b, Evaluable a b) => Pieces a b -> Pieces a b -> Maybe Ordering
 -- | Check whether the pieces are all comparable, and if so all compare the same way 
-comparePW x' y' = goCompare (Just EQ) $ disaggregate $ getPieces (plus x' (minus y'))
+comparePW x' y' = goCompare (Just EQ) $ disaggregate $ getPieces (x' - y')
     where
         goCompare :: (Fractional a, Eq a, Ord a, Comparable a b) => Maybe Ordering -> [(a, a, b)] -> Maybe Ordering
         goCompare Nothing _     = Nothing           -- stop once we get Nothing
@@ -279,7 +279,7 @@ piecewiseSupport :: (Mergeable b, Eq b) => Pieces a b -> (a, a)
 piecewiseSupport x = (start, end)
     where
         xs = getPieces x -- reduce to a list
-        start = basepoint (head (dropWhile (\y -> object y == zeroObject) xs))
+        start = basepoint (head (dropWhile (\y -> object y == zero) xs))
         end   = basepoint $ last xs
 
 applyObject :: (b -> b -> b) -> b -> Pieces a b -> Pieces a b
