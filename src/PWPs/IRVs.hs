@@ -168,9 +168,13 @@ constructLinearCDF xs
             segments  = map Ph (zipWith3 makeSegment probabilities basepoints slopes ++ [makePoly (last probabilities)])
             makeSegment y x s = Poly [y - x*s, s]
 
-asDiscreteCDF :: MyConstraints a => IRV a -> Int -> [(a, a)]
+asDiscreteCDF :: MyConstraints a => IRV a -> Int -> [Either (a,a) [(a, a)]]
 -- | Turn an IRV into a list of point pairs corresponding to the CDF, with a given minimum number of points
-asDiscreteCDF x n = if n <= 0 then error "Invalid number of points" else decomposeIRV n (makeCDF x)
+asDiscreteCDF x n = if n <= 0 then error "Invalid number of points" 
+                              else displayPolyDeltaIntervals (makeCDF x) spacing
+    where
+        width = snd (support x) - fst (support x)
+        spacing = width / Prelude.fromIntegral n
 
 asDiscretePDF :: MyConstraints a => IRV a -> Int -> [Either (a,a) [(a, a)]]
 -- | Return a sequence of (Left) Impulse Probablity mass (equivalent to the
@@ -181,25 +185,6 @@ asDiscretePDF x n = if n <= 0 then error "Invalid number of points"
     where
         width = snd (support x) - fst (support x)
         spacing = width / Prelude.fromIntegral n
-
-decomposeIRV :: (Ord a, Num a, Fractional a) => Int -> DistributionH a -> [(a, a)]
-decomposeIRV numPoints ys = zip basepoints values
-    where
-        pointsList = getPieces ys
-        originalBasepoints = map basepoint pointsList
-        spacing = last originalBasepoints / Prelude.fromIntegral numPoints
-        basepoints = makePoints originalBasepoints spacing (head originalBasepoints)
-        makePoints :: (Ord b, Num b) => [b] -> b -> b -> [b]
-        -- make points by repeatedly adding spacing to last interval boundary until it exceeds the next interval boundary
-        makePoints [] _ _ = [] -- already got the last interval boundary included, no need to go further
-        makePoints (y':ys') sp prev =
-            if new >= y'
-                then y':makePoints ys' sp y' -- gone past the next interval, so take that instead and carry on
-                else new:makePoints (y':ys') sp new -- just add spacing and repeat until we pass the boundary
-            where
-                new = prev + sp
-        -- evaluate at the the basepoints - will get a list at each point, take the first
-        values = map (head . (`evaluate` ys)) basepoints
 
 firstToFinish :: MyConstraints a => IRV a -> IRV a -> IRV a
 firstToFinish x y = CDF (cdfOfx + cdfOfy - (cdfOfx * cdfOfy))

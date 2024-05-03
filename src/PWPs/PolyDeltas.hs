@@ -26,7 +26,6 @@ module PWPs.PolyDeltas
 where
 import PWPs.ConvolutionClasses
 import PWPs.SimplePolynomials as SP
-import Debug.Trace
 
 {- |
 A PolyDelta either a polynomial, a (shifted, scaled) Delta or a (shifted, scaled) Heaviside. 
@@ -62,7 +61,6 @@ instance Functor PolyHeaviside where
 type MyConstraints a = (Eq a, Num a, Fractional a)
 type EqNum a = (Eq a, Num a) 
 type OrdNumEqFrac a = (Ord a, Num a, Eq a, Fractional a) 
-type OrdNumEqFracShow a = (Ord a, Num a, Eq a, Fractional a, Show a) 
 
 plusPD :: (Eq a, Fractional a) => PolyDelta a -> PolyDelta a -> PolyDelta a
 -- Polynomials have zero mass at a single point, so they are dominated by Ds and Hs
@@ -106,21 +104,23 @@ instance MyConstraints a => Num (PolyHeaviside a) where
     signum        = undefined
     fromInteger n = Ph $ makePoly $ Prelude.fromInteger n
 
-integratePDH :: (Eq a, Fractional a) => PolyDelta a -> PolyHeaviside a
-integratePDH (Pd x) = Ph (integratePoly x)
-integratePDH (D x)  = H 0 x
+-- | We integrate PolyDeltas to get PolyHeavisides
+integratePD :: (Eq a, Fractional a) => PolyDelta a -> PolyHeaviside a
+integratePD (Pd x) = Ph (integratePoly x)
+integratePD (D x)  = H 0 x
 
-differentiatePHD :: MyConstraints a => PolyHeaviside a -> PolyDelta a
-differentiatePHD (Ph x)  = Pd (differentiatePoly x)
-differentiatePHD (H x y) = D (y - x)
+-- | We differentiate PolyHeavisides to get PolyDeltas
+differentiatePH :: MyConstraints a => PolyHeaviside a -> PolyDelta a
+differentiatePH (Ph x)  = Pd (differentiatePoly x)
+differentiatePH (H x y) = D (y - x)
 
 instance MyConstraints a => Integrable (PolyDelta a) (PolyHeaviside a)
     where
-        integrate        = integratePDH
+        integrate        = integratePD
 
 instance MyConstraints a => Differentiable (PolyHeaviside a) (PolyDelta a)
     where
-        differentiate    = differentiatePHD
+        differentiate    = differentiatePH
 
 scalePD :: EqNum a => a -> PolyDelta a -> PolyDelta a
 scalePD x (Pd a) = Pd (SP.scalePoly x a)
@@ -172,21 +172,27 @@ When both arguments are polynomials, we check the intervals are non-zero then us
 For a delta, lower == upper (invariant to be checked), and the effect of the delta is to translate the other
 argument (whichever it is) along by this amount. Need to ensure there is still an initial interval based at zero.
 -}
-convolvePolyDeltas (lf, uf, Pd f) (lg, ug, Pd g) =
-    if (uf <= lf) || (ug <= lg) then error "Invalid polynomial interval width"
-                                else aggregate $ map (\(x, p) -> (x, Pd p)) (convolvePolys (lf, uf, f) (lg, ug, g))
+convolvePolyDeltas (lf, uf, Pd f) (lg, ug, Pd g) 
+    | (uf <= lf) || (ug <= lg) = error "Invalid polynomial interval width" 
+    -- convolve the polynomials to get a list of intervals, put the type back and remove redundant intervals
+    | otherwise = aggregate $ map (\(x, p) -> (x, Pd p)) (convolvePolys (lf, uf, f) (lg, ug, g))
 convolvePolyDeltas (lf, uf, D f) (lg, ug, Pd g)
     | lf /= uf     = error "Non-zero delta interval"
     | ug < lg      = error "Negative interval width"
-    | f == 0       = [(0, Pd zeroPoly)] -- convolving with a zero-sized delta gives nothing
-    | lf == 0      = [(lg, scalePD f (Pd g)), (ug, Pd zeroPoly)] -- degenerate case of delta at zero
-    -- Shift the poly by the basepoint of the delta and insert a new initial zero interval
+    -- convolving with a zero-sized delta gives nothing
+    | f == 0       = [(0, Pd zeroPoly)] 
+    -- degenerate case of delta at zero: don't shift but scale by the mass of the delta
+    | lf == 0      = [(lg, scalePD f (Pd g)), (ug, Pd zeroPoly)] 
+    
     | otherwise    = aggregate [(0, Pd zeroPoly), (lg + lf, scalePD f (Pd (shiftPoly lf g))), (ug + lf, Pd zeroPoly)]
 convolvePolyDeltas (lf, uf, Pd f) (lg, ug, D g) = convolvePolyDeltas (lg, ug, D g) (lf, uf, Pd f)  -- commutative
 convolvePolyDeltas (lf, uf, D f) (lg, ug, D g) -- both deltas
     | lf /= uf || lg /= ug  = error "Non-zero delta interval"
-    | f * g == 0            = [(0, Pd zeroPoly)] -- convolving with a zero-sized delta gives nothing
-    | lg + lf == 0          = [(0, D (f * g)), (0, Pd zeroPoly)] -- degenerate case of deltas at zero
+    -- convolving with a zero-sized delta gives nothing
+    | f * g == 0            = [(0, Pd zeroPoly)] 
+    -- degenerate case of deltas at zero: no shifting but mutiply the masses
+    | lg + lf == 0          = [(0, D (f * g)), (0, Pd zeroPoly)] 
+    -- Shift by the sum of the basepoints, multiply the masses, and insert a new initial zero interval
     | otherwise             = [(0, Pd zeroPoly), (lg + lf, D (f * g)), (lg + lf, Pd zeroPoly)]
 
 instance (Num a, Fractional a, Ord a) => CompactConvolvable a (PolyDelta a)
@@ -255,7 +261,7 @@ displayPolyHeaviside  :: OrdNumEqFrac a => a -> (a, a, PolyHeaviside a) -> Eithe
 displayPolyHeaviside  s (l, u, Ph p)  = if l >= u then error "Invalid polynomial interval"
                                     else Right (displayPoly p (l, u) s)
 displayPolyHeaviside  _ (l, u, H x y) = if l /= u then error "Non-zero heaviside interval"
-                                    else Left (l, y - x)
+                                    else Left (l, x)
 
 instance OrdNumEqFrac a => Displayable a (PolyHeaviside a)
     where
