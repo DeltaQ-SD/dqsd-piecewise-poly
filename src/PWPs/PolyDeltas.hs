@@ -61,6 +61,8 @@ instance Functor PolyHeaviside where
 
 type MyConstraints a = (Eq a, Num a, Fractional a)
 type EqNum a = (Eq a, Num a) 
+type OrdNumEqFrac a = (Ord a, Num a, Eq a, Fractional a) 
+type OrdNumEqFracShow a = (Ord a, Num a, Eq a, Fractional a, Show a) 
 
 plusPD :: (Eq a, Fractional a) => PolyDelta a -> PolyDelta a -> PolyDelta a
 -- Polynomials have zero mass at a single point, so they are dominated by Ds and Hs
@@ -232,27 +234,29 @@ instance (Num a, Eq a, Fractional a) => Mergeable (PolyHeaviside a)
 {-|
     Given an interval containing a given value of a PolyHeaviside, find its location
 -}
-polyHeavisideRoot  :: (Ord a, Num a, Eq a, Fractional a) => a -> a -> (a, a) -> PolyHeaviside a -> Maybe a
+polyHeavisideRoot  :: OrdNumEqFrac a => a -> a -> (a, a) -> PolyHeaviside a -> Maybe a
 -- If we have a step, the interval is zero width so this is the root
 polyHeavisideRoot  _ _ (l, u) (H _ _) = if l /= u then error "Non-zero Heaviside interval" else Just l
 -- otherwise we have a polynomial: subtract the value we are looking for so that we seek a zero crossing
 polyHeavisideRoot  e x (l, u) (Ph p) = findPolyRoot e (l, u) (p - makePoly x)
 
-displayPolyDelta :: (Ord a, Num a, Eq a, Fractional a) => a -> (a, a, PolyDelta a) -> Either (a,a) [(a, a)]
-displayPolyDelta _ (l, u, D x)  = if l /= u then error "Non-zero delta interval"
-                                    else Left (l, x)
-displayPolyDelta s (l, u, Pd p) = if l >= u then error "Invalid polynomial interval"
-                                    else Right (displayPoly p (l, u) s)
-instance (Ord a, Num a, Eq a, Fractional a) => Displayable a (PolyDelta a)
+displayPolyDelta :: OrdNumEqFrac a => a -> (a, a, PolyDelta a) -> Either (a,a) [(a, a)]
+displayPolyDelta _ (l, u, D x)
+    | l /= u    = error "Non-zero delta interval"
+    | otherwise = Left (l, x)
+displayPolyDelta s (l, u, Pd p) 
+    | l >= u    = error "Invalid polynomial interval"
+    | otherwise = Right (displayPoly p (l, u) s)
+instance OrdNumEqFrac a => Displayable a (PolyDelta a)
     where
         displayObject = displayPolyDelta
 
-displayPolyHeaviside  :: (Ord a, Num a, Eq a, Fractional a) => a -> (a, a, PolyHeaviside a) -> Either (a,a) [(a, a)]
+displayPolyHeaviside  :: OrdNumEqFrac a => a -> (a, a, PolyHeaviside a) -> Either (a,a) [(a, a)]
 displayPolyHeaviside  s (l, u, Ph p)  = if l >= u then error "Invalid polynomial interval"
                                     else Right (displayPoly p (l, u) s)
 displayPolyHeaviside  _ (l, u, H x y) = if l /= u then error "Non-zero heaviside interval"
                                     else Left (l, y - x)
 
-instance (Ord a, Num a, Eq a, Fractional a) => Displayable a (PolyHeaviside a)
+instance OrdNumEqFrac a => Displayable a (PolyHeaviside a)
     where
         displayObject = displayPolyHeaviside

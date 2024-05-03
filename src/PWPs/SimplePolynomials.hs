@@ -38,7 +38,7 @@ instance Eq a => Eq (Poly a)
     where
         Poly x == Poly y = x == y
 
-type EqNum a = (Eq a, Num a) 
+type EqNum a = (Eq a, Num a)
 
 makePoly :: Eq a => a -> Poly a
 -- | turn a constant into a constant polynomial
@@ -124,12 +124,6 @@ differentiatePoly :: EqNum a => Poly a -> Poly a
 differentiatePoly (Poly [])     = error "Polynomial was empty"
 differentiatePoly (Poly [_])    = zeroPoly -- constant differentiates to zero
 differentiatePoly (Poly (_:as)) = Poly (zipWith (*) as (iterate (+1) 1)) -- discard the constant term, everything else noves down one
-{-instance (Eq a, Num a, Fractional a) => Differentiable (Poly a)
-    where
-        differentiate     = differentiatePoly
-instance (Eq a, Num a, Fractional a) => Integrable (Poly a)
-    where
-        integrate         = integratePoly-}
 
 evaluatePoly :: EqNum p => p -> Poly p -> p
 {- |
@@ -201,13 +195,15 @@ shiftPoly s (Poly ps) = sum [b `scalePoly` binomialExpansion n s | (n,b) <- zip 
         binomialExpansion :: EqNum a => Int -> a -> Poly a
         binomialExpansion n y = Poly (map (binomialTerm y n) [0..n])
 
-displayPoly :: (Ord a, Eq a, Num a) => Poly a -> (a, a) -> a -> [(a, a)]
+displayPoly :: (Ord a, Eq a, Num a) => Poly a -> (a, a) -> a -> [(a, a)] 
 -- | Create a given uniform spacing s over a range (l, u) return a list of (x, y) values of poly p over that range
 -- First point will be at the base of the range, and then we increment the bottom of the interval by s
 -- until it reaches the top of the interval
-displayPoly p (l, u) s = reverse $ goDisplay l
-    where
-        goDisplay x = if x >= u then [] else (x, evaluatePoly x p) : goDisplay (x + s)
+displayPoly p (l, u) s
+    | s == 0 = [(l, evaluatePoly l p)]
+    | otherwise = reverse $ goDisplay l
+        where
+            goDisplay x = if x >= u then [] else (x, evaluatePoly x p) : goDisplay (x + s)
 
 {- |
 We use Sturm's Theorem to count the number of roots of a polynomial in a given interval.
