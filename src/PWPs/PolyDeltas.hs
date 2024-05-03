@@ -260,7 +260,7 @@ instance OrdNumEqFrac a => Displayable a (PolyDelta a)
 displayPolyHeaviside  :: OrdNumEqFrac a => a -> (a, a, PolyHeaviside a) -> Either (a,a) [(a, a)]
 displayPolyHeaviside  s (l, u, Ph p)  = if l >= u then error "Invalid polynomial interval"
                                     else Right (displayPoly p (l, u) s)
-displayPolyHeaviside  _ (l, u, H x y) = if l /= u then error "Non-zero heaviside interval"
+displayPolyHeaviside  _ (l, u, H x _) = if l /= u then error "Non-zero heaviside interval"
                                     else Left (l, x)
 
 instance OrdNumEqFrac a => Displayable a (PolyHeaviside a)
