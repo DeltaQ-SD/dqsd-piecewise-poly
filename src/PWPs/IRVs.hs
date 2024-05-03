@@ -83,7 +83,7 @@ invert :: (Eq a, Ord a, Fractional a) => DistributionH a -> DistributionH a
 -- | Construct the inverse CDF by subtracting the CDF from 1
 invert = applyObject (-) (Ph $ makePoly 1)
 
-shiftIRV :: (Fractional a, Ord a, Num a, Enum a, Eq a, Differentiable (DistributionH a) (DistributionD a)) => a -> IRV a -> IRV a
+shiftIRV :: (Show a, Fractional a, Ord a, Num a, Enum a, Eq a, Differentiable (DistributionH a) (DistributionD a)) => a -> IRV a -> IRV a -- ADDED SHOW
 -- | Make a delta and convolve with it
 shiftIRV s x = constructDelta s PWPs.IRVs.<+> PDF (makePDF x)
 
@@ -251,7 +251,8 @@ multiWeightedChoice xs = PDF (sum (zipWith adjust weights pdfs))
 
 -- | To convolve, force into PDFs and then invoke piecewise convolution
 infix 7 <+> -- same as *
-(<+>) :: MyConstraints a => IRV a -> IRV a -> IRV a
+--(<+>) :: MyConstraints a => IRV a -> IRV a -> IRV a
+(<+>) :: (Fractional a, Ord a, Num a, Enum a, Eq a, Show a)=> IRV a -> IRV a -> IRV a
 x <+> y = PDF (makePDF x PWPs.Piecewise.<+> makePDF y)
 
 probMass :: MyConstraints a => IRV a -> a
