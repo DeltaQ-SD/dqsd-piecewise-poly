@@ -43,7 +43,6 @@ module PWPs.Piecewise
 ) where
 
 import PWPs.ConvolutionClasses
-import Debug.Trace
 
 data Piece a o = Piece
     {
@@ -238,11 +237,11 @@ instance (Num a, Eq a, Ord a, Evaluable a b) => Evaluable a (Pieces a b)
 Piecwise convolution requires convolving the pieces pairwise and then summing the results,
 i.e. convolve every piece with every other piece and combine the results.
 -}
-(<+>) :: (Show a, Show b, Ord a, Num a, Enum a, Fractional a, Num b, Mergeable b, Evaluable a b, CompactConvolvable a b) => Pieces a b -> Pieces a b -> Pieces a b
+(<+>) :: (Ord a, Num a, Enum a, Fractional a, Num b, Mergeable b, Evaluable a b, CompactConvolvable a b) => Pieces a b -> Pieces a b -> Pieces a b
 infix 7 <+>
 (<+>) (Pieces []) _ = error "Empty piece list"
 (<+>) _ (Pieces []) = error "Empty piece list"
-(<+>) as bs = traceShow (das,dbs) sum [Pieces (map makePiece (convolveIntervals a b)) | a <- das, b <- dbs]
+(<+>) as bs = sum [Pieces (map makePiece (convolveIntervals a b)) | a <- das, b <- dbs]
     where das = disaggregate (getPieces as)
           dbs = disaggregate (getPieces bs)
 
