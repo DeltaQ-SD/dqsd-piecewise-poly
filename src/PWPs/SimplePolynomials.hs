@@ -222,7 +222,15 @@ multiple root of p (a circumstance we shall ignore)
 We start from the tuple that emerges from disagregation.
 -}
 countPolyRoots :: (Fractional a, Eq a, Ord a) => (a, a, Poly a) -> Int
-countPolyRoots (l, r, p) = signVariations (sturmSequence l p) - signVariations (sturmSequence r p)
+countPolyRoots (l, r, p) = case degreePoly p of
+    -- p is the zero polynomial, so it doesn't *cross* zero
+    -1 -> 0
+    -- p is a non-zero constant polynomial - no root
+    0  -> 0
+    -- p is a linear polynomial, which has a root iff it has a different sign at each end of the interval
+    1  -> if evaluatePoly l p * evaluatePoly r p < 0 then 1 else 0
+    -- p has degree 2 or more so we can construct the Sturm sequence
+    _  -> signVariations (sturmSequence l p) - signVariations (sturmSequence r p)
     where
         signVariations :: (Fractional a, Eq a, Ord a) => [a] -> Int
         {-
