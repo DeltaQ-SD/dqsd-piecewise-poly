@@ -264,7 +264,6 @@ comparePW :: (Fractional a, Eq a, Ord a, Comparable a b, Num b, Mergeable b, Eva
 comparePW x' y' = goCompare (Just EQ) $ disaggregate $ getPieces (x' - y')
     where
         goCompare :: (Fractional a, Eq a, Ord a, Comparable a b) => Maybe Ordering -> [(a, a, b)] -> Maybe Ordering
-        goCompare Nothing _     = Nothing           -- stop once we get Nothing
         goCompare prev []       = prev              -- when the list is exhauseted, keep the last result
         goCompare prev (x:xs)
             | prev == Just EQ   = goCompare next xs -- Equality is neutral
