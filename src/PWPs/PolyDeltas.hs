@@ -59,8 +59,8 @@ instance Functor PolyHeaviside where
     fmap f (Ph x) = Ph (fmap f x)
 
 type MyConstraints a = (Eq a, Num a, Fractional a)
-type EqNum a = (Eq a, Num a) 
-type OrdNumEqFrac a = (Ord a, Num a, Eq a, Fractional a) 
+type EqNum a = (Eq a, Num a)
+type OrdNumEqFrac a = (Ord a, Num a, Eq a, Fractional a)
 
 plusPD :: (Eq a, Fractional a) => PolyDelta a -> PolyDelta a -> PolyDelta a
 -- Polynomials have zero mass at a single point, so they are dominated by Ds and Hs
@@ -172,26 +172,26 @@ When both arguments are polynomials, we check the intervals are non-zero then us
 For a delta, lower == upper (invariant to be checked), and the effect of the delta is to translate the other
 argument (whichever it is) along by this amount. Need to ensure there is still an initial interval based at zero.
 -}
-convolvePolyDeltas (lf, uf, Pd f) (lg, ug, Pd g) 
-    | (uf <= lf) || (ug <= lg) = error "Invalid polynomial interval width" 
+convolvePolyDeltas (lf, uf, Pd f) (lg, ug, Pd g)
+    | (uf <= lf) || (ug <= lg) = error "Invalid polynomial interval width"
     -- convolve the polynomials to get a list of intervals, put the type back and remove redundant intervals
     | otherwise = aggregate $ map (\(x, p) -> (x, Pd p)) (convolvePolys (lf, uf, f) (lg, ug, g))
 convolvePolyDeltas (lf, uf, D f) (lg, ug, Pd g)
     | lf /= uf     = error "Non-zero delta interval"
     | ug < lg      = error "Negative interval width"
     -- convolving with a zero-sized delta gives nothing
-    | f == 0       = [(0, Pd zeroPoly)] 
+    | f == 0       = [(0, Pd zeroPoly)]
     -- degenerate case of delta at zero: don't shift but scale by the mass of the delta
-    | lf == 0      = [(lg, scalePD f (Pd g)), (ug, Pd zeroPoly)] 
-    
+    | lf == 0      = [(lg, scalePD f (Pd g)), (ug, Pd zeroPoly)]
+
     | otherwise    = aggregate [(0, Pd zeroPoly), (lg + lf, scalePD f (Pd (shiftPoly lf g))), (ug + lf, Pd zeroPoly)]
 convolvePolyDeltas (lf, uf, Pd f) (lg, ug, D g) = convolvePolyDeltas (lg, ug, D g) (lf, uf, Pd f)  -- commutative
 convolvePolyDeltas (lf, uf, D f) (lg, ug, D g) -- both deltas
     | lf /= uf || lg /= ug  = error "Non-zero delta interval"
     -- convolving with a zero-sized delta gives nothing
-    | f * g == 0            = [(0, Pd zeroPoly)] 
+    | f * g == 0            = [(0, Pd zeroPoly)]
     -- degenerate case of deltas at zero: no shifting but mutiply the masses
-    | lg + lf == 0          = [(0, D (f * g)), (0, Pd zeroPoly)] 
+    | lg + lf == 0          = [(0, D (f * g)), (0, Pd zeroPoly)]
     -- Shift by the sum of the basepoints, multiply the masses, and insert a new initial zero interval
     | otherwise             = [(0, Pd zeroPoly), (lg + lf, D (f * g)), (lg + lf, Pd zeroPoly)]
 
@@ -200,20 +200,41 @@ instance (Num a, Fractional a, Ord a) => CompactConvolvable a (PolyDelta a)
         convolveIntervals = convolvePolyDeltas
 
 {-|
-    We measure whether or not a polyheaviside is consistently above or below zero, or equals zero
+    We measure whether a polyheaviside is consistently above or below another, or equals 
 -}
-comparePHToZero :: (Fractional a, Eq a, Ord a) => (a, a, PolyHeaviside a) -> Maybe Ordering
-comparePHToZero (lf, uf, Ph f) = SP.compareToZero (lf, uf, f) -- simple polynomial case
-comparePHToZero (lf, uf, H x y)
-    | lf /= uf                                          = error "Non-zero Heaviside interval"
-    | (x == 0) && (y == 0)                              = Just EQ
-    | ((x > 0) && (y >= 0)) || ((x >= 0) && (y > 0))    = Just GT
-    | ((x < 0) && (y <= 0)) || ((x <= 0) && (y < 0))    = Just LT
-    | otherwise                                         = Nothing
-
+comparePHs :: (Fractional a, Eq a, Ord a) => (a, a, (PolyHeaviside a, PolyHeaviside a)) -> Maybe Ordering
+-- simple polynomial case: f >= g <=> f - g >= 0
+comparePHs (lf, uf, (Ph f, Ph g)) = SP.compareToZero (lf, uf, f - g) 
+-- compare a Heaviside step to a polynomial at a point
+comparePHs (lf, uf, (H x y, Ph f))
+    | lf /= uf                                           = error "Non-zero Heaviside interval"
+    -- they can be equal only if the Heaviside step is 0
+    | (x == fx) && (y == fx)                             = Just EQ
+    -- if the bottom of the Heaviside surpasses the polynomial it is greater, given its height is non-zero
+    | x >= fx                                            = Just GT
+    -- if the top of the Heaviside is surpassed by the polynomial, it is lesser
+    | y <= fx                                            = Just LT
+    | otherwise                                          = Nothing
+        where
+            fx = evaluatePoly lf f
+-- if the Heaviside and the polynomial are the other way round, swap them and reverse the ordering
+comparePHs (lf, uf, (Ph f, H x y)) = reverseOrder $ comparePHs (lf, uf, (H x y, Ph f))
+    where
+        reverseOrder o = case o of
+            Nothing -> Nothing
+            Just EQ -> Just EQ
+            Just LT -> Just GT
+            Just GT -> Just LT
+-- Comparing two Heavisides at the same point requires comparing their bases and steps
+comparePHs (lf, uf, (H x y, H x' y'))
+    | lf /= uf                                           = error "Non-zero Heaviside interval"
+    | (x == x') && (y == y')                             = Just EQ
+    | ((x > x') && (y >= y')) || ((x >= x') && (y > y')) = Just GT
+    | ((x < x') && (y <= y')) || ((x <= x') && (y < y')) = Just LT
+    | otherwise                                          = Nothing
 instance (Fractional a, Eq a, Ord a) => Comparable a (PolyHeaviside a)
     where
-        compareZero = comparePHToZero
+        compareObjects = comparePHs
 
 {-|
     We merge polynomials if they are equal. We merge Ds/Hs by adding them (not that we expect this case).
@@ -250,7 +271,7 @@ displayPolyDelta :: OrdNumEqFrac a => a -> (a, a, PolyDelta a) -> Either (a,a) [
 displayPolyDelta _ (l, u, D x)
     | l /= u    = error "Non-zero delta interval"
     | otherwise = Left (l, x)
-displayPolyDelta s (l, u, Pd p) 
+displayPolyDelta s (l, u, Pd p)
     | l >= u    = error "Invalid polynomial interval"
     | otherwise = Right (displayPoly p (l, u) s)
 instance OrdNumEqFrac a => Displayable a (PolyDelta a)

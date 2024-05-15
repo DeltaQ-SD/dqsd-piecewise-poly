@@ -43,10 +43,10 @@ class CompactConvolvable a b where
     convolveIntervals :: (a, a, b) -> (a, a, b) -> [(a, b)]  -- convolution
 
 {- |
-    We express a partial order by comparing an object on an interval with zero, delivering a Maybe Ordering 
+    We express a partial order by comparing a pair of objects on an interval, delivering a Maybe Ordering 
 -}
 class Comparable a b where
-    compareZero :: (a, a, b) -> Maybe Ordering
+    compareObjects :: (a, a, (b, b)) -> Maybe Ordering
 
 {- |
     We want to know when two objects can be merged - this is not the same as saying they are equal
