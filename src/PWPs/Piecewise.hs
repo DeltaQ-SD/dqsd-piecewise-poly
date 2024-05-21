@@ -33,6 +33,7 @@ module PWPs.Piecewise
     , zero
     , (><)
     , (<+>)
+    , integratePieces
     , piecesFinalValue
     , monotonic
     , comparePW
@@ -260,10 +261,10 @@ infix 7 ><
 (><) = fmap . scale
 
 comparePW :: (Fractional a, Eq a, Ord a, Comparable a b, Num b, Mergeable b, Evaluable a b) => Pieces a b -> Pieces a b -> Maybe Ordering
--- | Check whether the pieces are all comparable, and if so all compare the same way 
-comparePW x' y' = goCompare (Just EQ) $ disaggregate $ getPieces (x' - y')
+-- | Check whether the pieces are all comparable, and if so if all compare the same way 
+comparePW x' y' = goCompare (Just EQ) $ disaggregate $ getPieces $ alignPieces x' y'
     where
-        goCompare :: (Fractional a, Eq a, Ord a, Comparable a b) => Maybe Ordering -> [(a, a, b)] -> Maybe Ordering
+        goCompare :: (Fractional a, Eq a, Ord a, Comparable a b) => Maybe Ordering -> [(a, a, (b, b))] -> Maybe Ordering
         goCompare prev []       = prev              -- when the list is exhauseted, keep the last result
         goCompare prev (x:xs)
             | prev == Just EQ   = goCompare next xs -- Equality is neutral
@@ -271,7 +272,7 @@ comparePW x' y' = goCompare (Just EQ) $ disaggregate $ getPieces (x' - y')
             | prev == next      = goCompare next xs -- The two intervals compare the same way, so carry on
             | otherwise         = Nothing           -- The two intervals compare differently, so stop
             where
-                next = compareZero x
+                next = compareObjects x
 
 piecewiseSupport :: (Mergeable b, Eq b) => Pieces a b -> (a, a)
 -- | Return the aggregate interval over which the pieces are not zero

@@ -297,7 +297,8 @@ compareToZero (l, u, p)
     | lower * upper < 0             = Nothing -- quick test to eliminate simple cases
     | countPolyRoots (l, u, p) > 0  = Nothing -- polynomial crosses zero
     -- since the polynomial has no roots, the comparison is detmined by the boundary values
-    | lower == 0 || upper == 0      = Just (compare upper lower)
+    | lower == 0                    = Just (compare upper lower)
+    | upper == 0                    = Just (compare lower upper)
     | lower > 0                     = Just GT -- upper must also be > 0 due to the lack of roots
     | otherwise                     = Just LT -- upper and lower both < 0 due to the lack of roots
     where
