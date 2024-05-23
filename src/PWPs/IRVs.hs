@@ -2,6 +2,8 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MonoLocalBinds #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 {-|
 Module      : IRVs
@@ -11,7 +13,7 @@ License     : BSD-2-Clause
 Maintainer  : peter.thompson@pnsol.com
 Stability   : experimental
 
-We build IRVs as ab abstract datatype on top of piecewise polynomials and deltas. 
+We build IRVs as an abstract datatype on top of piecewise polynomials and deltas. 
 IRVs may be represented as PDFs or CDFs. They are polymorphic in a constrained numeric type.
 
 We provide functions to construct IRVs as uniform distributions on an interval; a delta at a point;
@@ -20,11 +22,12 @@ and a CDF from a list of point-pairs.
 We provide functions to turn an IRV into a set of point-pairs representing either the PDF or CDF.
 
 We define operators for convolution, first-to-finish, all-to-finish and weighted choice.
-We also provide an operation to extract the probability mass (<= 1).
+We also provide an operation to extract the probability mass (<= 1) and the support of the
+distribution.
 
 We provide an implementation of the partial order on IRVs.
 
-We enable extraction of centiles.
+We enable extraction of centiles and computation of moments.
 
 Note that we can consistently represent 'bottom' using polynomials and 'top' by including deltas.
 -}
@@ -55,19 +58,22 @@ module PWPs.IRVs
   , centiles
   , cumulativeMass
   , shiftIRV
+  , Moments (..)
+  , moments
 )
 where
 
 import PWPs.Piecewise
 import PWPs.PolyDeltas
-import PWPs.SimplePolynomials (Poly (..), makePoly)
+import PWPs.SimplePolynomials (Poly (..), makePoly, makeMonomial)
 import PWPs.ConvolutionClasses
+import GHC.IO.Handle.Types (Handle__(Handle__))
 
-type MyConstraints a = (Fractional a, Ord a, Num a, Enum a, Eq a) 
-type DistributionD a = Pieces a (PolyDelta a)
-type DistributionH a = Pieces a (PolyHeaviside a)
+type MyConstraints a = (Fractional a, Ord a, Num a, Enum a, Eq a)
+type DistD a = Pieces a (PolyDelta a)
+type DistH a = Pieces a (PolyHeaviside a)
 
-data IRV a = PDF (DistributionD a) | CDF (DistributionH a)
+data IRV a = PDF (DistD a) | CDF (DistH a)
     deriving (Eq, Show)
 
 top :: (Ord a, Num a) => IRV a
@@ -76,23 +82,19 @@ top = PDF (makePieces [(0, D 1), (0, Pd 0)])
 bottom :: (Ord a, Num a) => IRV a
 bottom = CDF (makePieces [(0, Ph 0)])
 
-cumulativeMass :: (Ord a, Enum a, Num a, Fractional a, Evaluable a (DistributionH a), Integrable (DistributionD a) (DistributionH a)) => IRV a -> a -> a
+cumulativeMass :: (Ord a, Enum a, Num a, Fractional a, Evaluable a (DistH a), Integrable (DistD a) (DistH a)) => IRV a -> a -> a
 cumulativeMass x p = last $ evaluate p (makeCDF x)
 
-invert :: (Eq a, Ord a, Fractional a) => DistributionH a -> DistributionH a
--- | Construct the inverse CDF by subtracting the CDF from 1
-invert = applyObject (-) (Ph $ makePoly 1)
-
-shiftIRV :: (Show a, Fractional a, Ord a, Num a, Enum a, Eq a, Differentiable (DistributionH a) (DistributionD a)) => a -> IRV a -> IRV a -- ADDED SHOW
+shiftIRV :: (Fractional a, Ord a, Num a, Enum a, Eq a, Differentiable (DistH a) (DistD a)) => a -> IRV a -> IRV a
 -- | Make a delta and convolve with it
 shiftIRV s x = constructDelta s PWPs.IRVs.<+> PDF (makePDF x)
 
-makePDF :: (Fractional a, Ord a, Num a, Enum a, Eq a, Differentiable (DistributionH a) (DistributionD a)) => IRV a -> DistributionD a
+makePDF :: (Fractional a, Ord a, Num a, Enum a, Eq a, Differentiable (DistH a) (DistD a)) => IRV a -> DistD a
 -- | Force an IRV into a PDF by differentiating if necessary
 makePDF (PDF x) = x
 makePDF (CDF x) = differentiate x
 
-makeCDF :: (Fractional a, Ord a, Num a, Enum a, Eq a, Integrable (DistributionD a) (DistributionH a)) => IRV a -> DistributionH a
+makeCDF :: (Fractional a, Ord a, Num a, Enum a, Eq a, Integrable (DistD a) (DistH a)) => IRV a -> DistH a
 -- | Force an IRV into a CDF by integrating if necessary
 makeCDF (CDF x) = x
 -- assume PDFs are 0 at 0
@@ -169,17 +171,18 @@ constructLinearCDF xs
             makeSegment y x s = Poly [y - x*s, s]
 
 asDiscreteCDF :: MyConstraints a => IRV a -> Int -> [Either (a,a) [(a, a)]]
--- | Turn an IRV into a list of point pairs corresponding to the CDF, with a given minimum number of points
-asDiscreteCDF x n = if n <= 0 then error "Invalid number of points" 
+{- | Return a sequence of (Left) step base (the lower value of the Heaviside function at that point)
+     or (Right) a sequence of Time and Probability. The sequence is monotonically increasing in Time.-}
+asDiscreteCDF x n = if n <= 0 then error "Invalid number of points"
                               else displayPolyDeltaIntervals (makeCDF x) spacing
     where
         width = snd (support x) - fst (support x)
         spacing = width / Prelude.fromIntegral n
 
 asDiscretePDF :: MyConstraints a => IRV a -> Int -> [Either (a,a) [(a, a)]]
--- | Return a sequence of (Left) Impulse Probablity mass (equivalent to the
---   integral of the Heaviside function at that point) or (Right) a sequence
---   of Time and Probability Density. The sequence is monotonically increasing in Time.
+{- | Return a sequence of (Left) Impulse Probablity mass (equivalent to the
+     integral of the Heaviside function at that point) or (Right) a sequence
+     of Time and Probability Density. The sequence is monotonically increasing in Time. -}
 asDiscretePDF x n = if n <= 0 then error "Invalid number of points"
                               else displayPolyDeltaIntervals (makePDF x) spacing
     where
@@ -200,6 +203,7 @@ multiFtF [x] = x
 -- now know we have at least two, so head and tail are safe
 multiFtF xs = CDF $ invert $ foldr (*) (head icdfs) (tail icdfs)
     where
+        invert = applyObject (-) (Ph $ makePoly 1)
         icdfs = map (invert . makeCDF) xs
 
 allToFinish :: MyConstraints a => IRV a -> IRV a -> IRV a
@@ -216,8 +220,9 @@ multiAtF xs = CDF $ foldr (*) (head cdfs) (tail cdfs)
 
 probChoice :: MyConstraints a => a -> IRV a -> IRV a -> IRV a
 {- | 
-The probability is for choosing the left branch.
-We can do this on either PDFs or CDFs; if we have CDFs deliver a CDF, if we have both PDFs or one of each, deliver a PDF.
+    The probability is for choosing the left branch.
+    We can do this on either PDFs or CDFs; if we have CDFs deliver a CDF, 
+    if we have both PDFs or one of each, deliver a PDF.
 -}
 probChoice p x y = if (p < 0) || (p > 1) then error "Invalid probability value" else
     case (x,y) of
@@ -231,13 +236,12 @@ multiWeightedChoice [] = bottom
 multiWeightedChoice xs = PDF (sum (zipWith adjust weights pdfs))
     where
         weights = map fst xs                -- :: [a]
-        pdfs    = map (makePDF . snd) xs    -- :: [DistributionD a]
+        pdfs    = map (makePDF . snd) xs    -- :: [DistD a]
         adjust x y = (x / sum weights) >< y
 
 -- | To convolve, force into PDFs and then invoke piecewise convolution
 infix 7 <+> -- same as *
---(<+>) :: MyConstraints a => IRV a -> IRV a -> IRV a
-(<+>) :: (Fractional a, Ord a, Num a, Enum a, Eq a, Show a)=> IRV a -> IRV a -> IRV a
+(<+>) :: MyConstraints a => IRV a -> IRV a -> IRV a
 x <+> y = PDF (makePDF x PWPs.Piecewise.<+> makePDF y)
 
 probMass :: MyConstraints a => IRV a -> a
@@ -255,7 +259,7 @@ support :: (Eq a, Fractional a) => IRV a -> (a, a)
 support (PDF x) = piecewiseSupport x
 support (CDF x) = piecewiseSupport x
 
-centiles :: (Fractional a, Ord a, Num a, Enum a, Eq a, Evaluable a (PolyHeaviside a)) => [a] -> IRV a -> [Maybe a] 
+centiles :: (Fractional a, Ord a, Num a, Enum a, Eq a, Evaluable a (PolyHeaviside a)) => [a] -> IRV a -> [Maybe a]
 -- | Given an ordered list of probabiity values, return the times at which each value is reached; 
 -- if it is never reached, return Nothing in that position
 centiles probabilities dQ
@@ -287,3 +291,40 @@ centiles probabilities dQ
                     firstValue = head $ evaluate (basepoint first) (object first)
                     secondValue = last $ evaluate (basepoint second) (object first)
             findCentiles _ _ _ = error "Unexpected centile case"
+
+data Moments a = Moments
+    {
+        tangibleMass :: a
+      , mean         :: a
+      , variance     :: a
+      , skew         :: a
+      , kurtosis     :: a
+    }
+    deriving (Eq, Show)
+moments :: (Fractional a, Ord a, Num a, Enum a, Eq a, Integrable (DistD a) (DistH a), Evaluable a (DistD a), Evaluable a (DistH a)) =>
+            IRV a -> Moments a
+-- | Compute the first five moments of a given distribution
+moments f = Moments
+    {
+        tangibleMass = tau
+      , mean         = mu
+      , variance     = sigsq
+      , skew         = gamma
+      , kurtosis     = kappa
+    }
+    where
+        -- Compute the definite integral of x^nf(x)dx 
+        --xNIntegral :: (Enum a, Fractional a, Ord a, Integrable (PolyDelta a) (PolyHeaviside a)) => Int -> IRV a -> a --(Floating a, Fractional a', Ord a', Num a', Enum a', Eq a', Integrable (DistD a') (DistH a'), Evaluable a' (DistH a')) => Int -> IRV a' -> DistH a'
+        xNIntegral n g = piecesFinalValue (integralOfxToTheNtimesFx n g)
+        integralOfxToTheNtimesFx :: (Fractional a, Ord a, Num a, Enum a, Eq a) => Int -> IRV a -> DistH a
+        integralOfxToTheNtimesFx n' f' = integrate (xToTheNtimesFx n' f')
+        xToTheNtimesFx :: (Fractional a, Ord a, Num a, Enum a, Eq a) => Int -> IRV a -> DistD a
+        xToTheNtimesFx n'' f'' = applyObject (*) (Pd $ makeMonomial n'' 1) $ makePDF f''
+        tau   = xNIntegral 0 f
+        propF = PDF ((1/(1-tau)) >< makePDF f)
+        mu    = xNIntegral 1 propF
+        muSq  = mu * mu
+        sigsq = xNIntegral 2 propF - muSq
+        sigma = undefined --sqrt sigsq
+        gamma = (xNIntegral 3 propF + 3 * mu * sigsq - mu * muSq)/(sigma * sigsq)
+        kappa = (xNIntegral 4 propF + 4 * mu * gamma * sigma * sigsq - 6 * muSq * sigsq + muSq * muSq)/(sigsq * sigsq)
