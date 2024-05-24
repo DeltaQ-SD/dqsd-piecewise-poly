@@ -2,8 +2,6 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MonoLocalBinds #-}
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 {-|
 Module      : IRVs
@@ -67,7 +65,6 @@ import PWPs.Piecewise
 import PWPs.PolyDeltas
 import PWPs.SimplePolynomials (Poly (..), makePoly, makeMonomial)
 import PWPs.ConvolutionClasses
-import GHC.IO.Handle.Types (Handle__(Handle__))
 
 type MyConstraints a = (Fractional a, Ord a, Num a, Enum a, Eq a)
 type DistD a = Pieces a (PolyDelta a)
@@ -314,17 +311,34 @@ moments f = Moments
     }
     where
         -- Compute the definite integral of x^nf(x)dx 
-        --xNIntegral :: (Enum a, Fractional a, Ord a, Integrable (PolyDelta a) (PolyHeaviside a)) => Int -> IRV a -> a --(Floating a, Fractional a', Ord a', Num a', Enum a', Eq a', Integrable (DistD a') (DistH a'), Evaluable a' (DistH a')) => Int -> IRV a' -> DistH a'
         xNIntegral n g = piecesFinalValue (integralOfxToTheNtimesFx n g)
-        integralOfxToTheNtimesFx :: (Fractional a, Ord a, Num a, Enum a, Eq a) => Int -> IRV a -> DistH a
-        integralOfxToTheNtimesFx n' f' = integrate (xToTheNtimesFx n' f')
-        xToTheNtimesFx :: (Fractional a, Ord a, Num a, Enum a, Eq a) => Int -> IRV a -> DistD a
-        xToTheNtimesFx n'' f'' = applyObject (*) (Pd $ makeMonomial n'' 1) $ makePDF f''
+            where
+                integralOfxToTheNtimesFx :: (Fractional a, Ord a, Num a, Enum a, Eq a) => Int -> IRV a -> DistH a
+                integralOfxToTheNtimesFx n' f' = integrate (applyObject (*) (Pd $ makeMonomial n' 1) $ makePDF f')
         tau   = xNIntegral 0 f
-        propF = PDF ((1/(1-tau)) >< makePDF f)
-        mu    = xNIntegral 1 propF
+        -- catch case of bottom, otherwise scale back up to a proper distribution
+        fHat  = if tau == 0 then f else PDF ((1/tau) >< makePDF f)
+        mu    = xNIntegral 1 fHat
         muSq  = mu * mu
-        sigsq = xNIntegral 2 propF - muSq
-        sigma = undefined --sqrt sigsq
-        gamma = (xNIntegral 3 propF + 3 * mu * sigsq - mu * muSq)/(sigma * sigsq)
-        kappa = (xNIntegral 4 propF + 4 * mu * gamma * sigma * sigsq - 6 * muSq * sigsq + muSq * muSq)/(sigsq * sigsq)
+        sigsq = xNIntegral 2 fHat - muSq
+        {-sqRoot :: a -> a
+        sqRoot x = 
+            let
+                y :: Double
+                y = toRational x
+            in fromRational . toRational . sqrt y -}
+        sigma = squareRoot sigsq
+        -- if the variance is zero there can be no skewness
+        gamma = if sigsq == 0 then 0 else (xNIntegral 3 fHat - 3 * mu * sigsq - mu * muSq)/(sigma * sigsq)
+        -- The kurtosis is bounded below by the squared skewness plus 1
+        kappa = if sigsq == 0 then 1 else (xNIntegral 4 fHat - 4 * mu * gamma * sigma * sigsq - 6 * muSq * sigsq - muSq * muSq)/(sigsq * sigsq)
+        -- use Heron's method to compute the square root
+        squareRoot :: (Fractional a, Num a, Ord a) => a -> a
+        squareRoot x 
+            | x < 0     = error "Negative square root input" 
+            | x == 0    = 0
+            | otherwise = goRoot x0 
+                where 
+                    precision = x / 10000
+                    x0 = x/2 -- initial guess
+                    goRoot xi = if abs (x - xi * xi) <= precision then xi else goRoot ((xi + x / xi)/2)
