@@ -201,7 +201,7 @@ displayPoly :: (Ord a, Eq a, Num a) => Poly a -> (a, a) -> a -> [(a, a)]
 -- until it reaches the top of the interval
 displayPoly p (l, u) s
     | s == 0 = [(l, evaluatePoly l p)]
-    | otherwise = reverse $ goDisplay l
+    | otherwise = goDisplay l
         where
             goDisplay x = if x >= u then [] else (x, evaluatePoly x p) : goDisplay (x + s)
 
