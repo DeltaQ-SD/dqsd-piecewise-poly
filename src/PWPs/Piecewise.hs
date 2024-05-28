@@ -29,7 +29,6 @@ module PWPs.Piecewise
       Pieces (..)
     , Piece (..)
     , makePieces
-    , combinePieces
     , zero
     , (><)
     , (<+>)
@@ -40,7 +39,6 @@ module PWPs.Piecewise
     , piecewiseSupport
     , applyObject
     , displayPolyDeltaIntervals
-    , alignPieces
 ) where
 
 import PWPs.ConvolutionClasses
