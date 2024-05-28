@@ -39,6 +39,7 @@ module PWPs.IRVs
   , zeroPDF
   , constructCDF
   , constructLinearCDF
+  , constructGeneralCDF
   , firstToFinish
   , multiFtF
   , allToFinish
@@ -118,6 +119,39 @@ monotonicFromZero xs = if null xs then error "Empty list" else head xs == 0 && m
 
 repeatedPoint :: Eq a => [a] -> Bool
 repeatedPoint as = and $ zipWith (==) as (tail as)
+
+constructGeneralCDF :: MyConstraints a => [(a, a)] -> IRV a
+{- | Construct a CDF from a list of (time, probability) pairs, which start at (0,0) and are monotonic.
+     If the next time is strictly greater than the previous one, construct a linear interpolation between
+     the two probabilities. If the next time is the same as the previous one, construct a Heaviside step
+     between the two probabilities.
+-}
+constructGeneralCDF xs
+    | length xs < 2                         = error "Insufficient points"
+    | not (monotonicFromZero (map fst xs))  = error "Basepoints not monotonic"
+    | not (monotonicFromZero probabilities) = error "Probabilities not monotonic"
+    | last probabilities > 1                = error "Probability exceeds one"
+    | otherwise = (CDF . mergePieces . makePieces) (goCDF (head xs) (tail xs))
+        where
+            probabilities = map snd xs
+            goCDF :: MyConstraints a => (a,a) -> [(a,a)] ->  [(a, PolyHeaviside a)]
+            -- construct a constant poly from last point
+            goCDF (bf,pf) [] = [(bf, Ph (Poly [pf]))]
+            goCDF (bm,pm) ((bn,pn):ys) =
+                if bm == bn then (bm, H pm pn):goCDF (bn,pn) ys
+                            else (bm, Ph (slopeUp (bm,pm) (bn,pn))):goCDF (bn,pn) ys
+                where
+                    {- 
+                        Each linear polynomial has the form y = sx + c, where s is given by the difference
+                        in successive probabilities divided by the difference in succesive basepoints.
+                        The constant c is fixed by the constraint that we need to pass through the point (b0,p0),
+                        so c = p0 - b0*s.
+                        If the slope is zero we just have a constant polynomial.
+                    -}
+                    slopeUp (b0,p0) (b1,p1) = if s == 0 then Poly [p0] else Poly [p0 - b0 * s, s]
+                        where
+                            -- we know b1 /= b0 so the division is safe
+                            s = (p1-p0)/(b1-b0)
 
 constructCDF :: MyConstraints a => [(a, a)] -> IRV a
 -- | Construct a CDF from a list of values, treating each new value as a step up from the one before, assuming we start at 0
@@ -334,11 +368,11 @@ moments f = Moments
         kappa = if sigsq == 0 then 1 else (xNIntegral 4 fHat - 4 * mu * gamma * sigma * sigsq - 6 * muSq * sigsq - muSq * muSq)/(sigsq * sigsq)
         -- use Heron's method to compute the square root
         squareRoot :: (Fractional a, Num a, Ord a) => a -> a
-        squareRoot x 
-            | x < 0     = error "Negative square root input" 
+        squareRoot x
+            | x < 0     = error "Negative square root input"
             | x == 0    = 0
-            | otherwise = goRoot x0 
-                where 
+            | otherwise = goRoot x0
+                where
                     precision = x / 10000
                     x0 = x/2 -- initial guess
                     goRoot xi = if abs (x - xi * xi) <= precision then xi else goRoot ((xi + x / xi)/2)

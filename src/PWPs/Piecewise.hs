@@ -29,6 +29,7 @@ module PWPs.Piecewise
       Pieces (..)
     , Piece (..)
     , makePieces
+    , mergePieces
     , zero
     , (><)
     , (<+>)
