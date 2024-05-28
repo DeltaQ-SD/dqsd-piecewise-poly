@@ -83,7 +83,6 @@ instance MyConstraints a => Num (PolyDelta a) where
     signum        = undefined
     fromInteger n = Pd $ makePoly $ Prelude.fromInteger n
 
-
 plusPH :: (Eq a, Fractional a) => PolyHeaviside a -> PolyHeaviside a -> PolyHeaviside a
 -- Polynomials have zero mass at a single point, so they are dominated by Ds and Hs
 plusPH (Ph x) (Ph y)     = Ph (x + y)
@@ -252,9 +251,12 @@ instance (Num a, Eq a, Fractional a) => Mergeable (PolyDelta a)
 instance (Num a, Eq a, Fractional a) => Mergeable (PolyHeaviside a)
     where
         mergeObject a b = case (a, b) of
+            -- merge polynomials iff they are equal
             (Ph x, Ph y)     -> if x == y then Just (Ph y) else Nothing
+            -- merge a Heaviside with a following polynomial only if the step is zero
             (H x y, Ph z)    -> if x == y then Just (Ph z) else Nothing
-            (H x y, H x' y') -> Just (H (x + x') (y + y'))
+            -- Merge two Heavisides if they stack correctly
+            (H x y, H x' y') -> if y == x' then Just (H x y') else Nothing
             (_, _)           -> Nothing
         zero = Ph zeroPoly
 
