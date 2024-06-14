@@ -74,7 +74,7 @@ mergePieces f = Pieces (doMerge (getPieces f))
         doMerge [x]         = [x] -- stop when there's nothing left to merge
         doMerge (x0:x1:xs)  = case mergeObject (object x0) (object x1) of
             Nothing -> x0:doMerge (x1:xs) -- can't merge so just move on
-            Just o  -> (Piece {basepoint = basepoint x0, object = o}):doMerge xs -- extend interval through second basepoint
+            Just o  -> doMerge ((Piece {basepoint = basepoint x0, object = o}):xs) -- extend interval through second basepoint
 
 combinePieces :: (Num a, Eq a, Ord a, Mergeable b, Mergeable c, Mergeable d) => (b -> c -> d) -> Pieces a b -> Pieces a c -> Pieces a d
 {-|
