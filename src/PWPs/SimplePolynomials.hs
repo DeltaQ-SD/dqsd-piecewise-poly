@@ -153,7 +153,7 @@ convolvePolys (lf, uf, Poly fs) (lg, ug, Poly gs)
         let
             -- sum a set of terms depending on an iterator k (assumed to go down to 0), where each term is a k-dependent
             -- polynomial with a k-dependent multiplier
-            sumSeries k mulFactor poly = foldr (\n acc -> addPolys acc (mulFactor n `scalePoly` poly n)) zeroPoly [0..k]
+            sumSeries k mulFactor poly = sum [mulFactor n `scalePoly` poly n | n <- [0..k]]
 
             -- the inner summation has a similar structure each time
             innerSum m n term k = sumSeries (m+k+1) innerMult (\j -> makeMonomial (m+n+1-j) (term j))
