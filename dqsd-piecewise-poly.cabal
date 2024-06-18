@@ -64,6 +64,8 @@ library
     -- Modules included in this library but not exported.
     other-modules:    PWPs.Piecewise
                     , PWPs.PolyDeltas
+                    , PWPs.PolyHeavisides
+                    , PWPs.Calculus
                     , PWPs.SimplePolynomials
                     , PWPs.ConvolutionClasses
 

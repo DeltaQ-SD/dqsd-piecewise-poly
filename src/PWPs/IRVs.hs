@@ -64,6 +64,8 @@ where
 
 import PWPs.Piecewise
 import PWPs.PolyDeltas
+import PWPs.PolyHeavisides
+import PWPs.Calculus ()
 import PWPs.SimplePolynomials (Poly (..), makePoly, makeMonomial)
 import PWPs.ConvolutionClasses
 
