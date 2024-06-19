@@ -181,9 +181,14 @@ convolvePolys (lf, uf, Poly fs) (lg, ug, Poly gs)
             trimTerms []  = []
             trimTerms [x] = [x]
             trimTerms (x:y:xs) = if fst x == fst y then trimTerms (y:xs) else x:trimTerms (y:xs)
-
-        in trimTerms [(0, zeroPoly), (lf + lg, firstTerm), (lf + ug, secondTerm), (uf + lg, thirdTerm), (uf + ug, zeroPoly)]
-
+        {- 
+            When convolving distributions, both distributions will start at 0 and so there will always be a pair of intervals
+            with lg = lf = 0, so we don't need to add an initial zero piece.
+            Likewise there will always be a pair of pieces at the end with zero polynomials, so we don't need a terminal
+            zero piece either.
+        -}
+        in trimTerms [(lf + lg, firstTerm), (lf + ug, secondTerm), (uf + lg, thirdTerm)]
+        
 shiftPoly :: (Fractional a, Eq a, Num a) => a -> Poly a -> Poly a
 -- | Shift a polynomial p(x) -> p(x - y) by summing binomial expansions of each term
 shiftPoly s (Poly ps) = sum [b `scalePoly` binomialExpansion n s | (n,b) <- zip [0..] ps]
