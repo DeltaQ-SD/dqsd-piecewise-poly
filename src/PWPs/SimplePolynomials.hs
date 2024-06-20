@@ -176,11 +176,6 @@ convolvePolys (lf, uf, Poly fs) (lg, ug, Poly gs)
             secondTerm = makeTerm (\m n -> innerSum m n (\k -> lg^k - ug^k))
 
             thirdTerm  = makeTerm (\m n k -> makeMonomial (n-k) (uf^(m+k+1)) - innerSum m n (ug ^) k)
-
-            -- remove null intervals
-            trimTerms []  = []
-            trimTerms [x] = [x]
-            trimTerms (x:y:xs) = if fst x == fst y then trimTerms (y:xs) else x:trimTerms (y:xs)
         {- 
             When convolving distributions, both distributions will start at 0 and so there will always be a pair of intervals
             with lg = lf = 0, so we don't need to add an initial zero piece.
