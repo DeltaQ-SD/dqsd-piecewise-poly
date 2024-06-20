@@ -186,8 +186,11 @@ convolvePolys (lf, uf, Poly fs) (lg, ug, Poly gs)
             with lg = lf = 0, so we don't need to add an initial zero piece.
             Likewise there will always be a pair of pieces at the end with zero polynomials, so we don't need a terminal
             zero piece either.
+            lf + lg < lf + ug due to initial interval validity check. However, it's possible that lf + ug = uf + lg, so
+            we need to test for a redundant middle interval
         -}
-        in trimTerms [(lf + lg, firstTerm), (lf + ug, secondTerm), (uf + lg, thirdTerm)]
+        in if lf + ug == uf + lg then [(lf + lg, firstTerm), (uf + lg, thirdTerm)]
+                                 else [(lf + lg, firstTerm), (lf + ug, secondTerm), (uf + lg, thirdTerm)]
         
 shiftPoly :: (Fractional a, Eq a, Num a) => a -> Poly a -> Poly a
 -- | Shift a polynomial p(x) -> p(x - y) by summing binomial expansions of each term
