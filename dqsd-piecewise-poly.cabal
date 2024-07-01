@@ -67,7 +67,7 @@ library
                     , PWPs.PolyHeavisides
                     , PWPs.Calculus
                     , PWPs.SimplePolynomials
-                    , PWPs.ConvolutionClasses
+                    , PWPs.PiecewiseClasses
 
     -- LANGUAGE extensions used by modules in this package.
     other-extensions:   GeneralizedNewtypeDeriving

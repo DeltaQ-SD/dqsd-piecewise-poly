@@ -16,7 +16,7 @@ module PWPs.Calculus
 (
 )
 where
-import PWPs.ConvolutionClasses
+import PWPs.PiecewiseClasses
 import PWPs.SimplePolynomials as SP
 import PWPs.PolyDeltas as PD
 import PWPs.PolyHeavisides as PH

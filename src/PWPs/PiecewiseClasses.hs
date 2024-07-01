@@ -13,7 +13,7 @@ In particular we want integration and differentiation operators that satisfy the
 Fundamental Theorem of Calculus and combine appropriately with addition and multiplication.
 We also want a convolution operator that behaves correctly.
 -}
-module PWPs.ConvolutionClasses
+module PWPs.PiecewiseClasses
 (
     Integrable (..)
   , Differentiable (..)

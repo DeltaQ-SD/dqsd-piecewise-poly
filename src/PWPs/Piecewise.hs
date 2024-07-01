@@ -42,7 +42,7 @@ module PWPs.Piecewise
     , displayPolyDeltaIntervals
 ) where
 
-import PWPs.ConvolutionClasses
+import PWPs.PiecewiseClasses
 
 data Piece a o = Piece
     {

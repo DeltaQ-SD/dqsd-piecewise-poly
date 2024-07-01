@@ -22,7 +22,7 @@ module PWPs.PolyDeltas
       PolyDelta (..)
 )
 where
-import PWPs.ConvolutionClasses
+import PWPs.PiecewiseClasses
 import PWPs.SimplePolynomials as SP
 
 {- |

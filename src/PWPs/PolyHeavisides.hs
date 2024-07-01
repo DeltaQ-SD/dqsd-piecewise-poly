@@ -21,7 +21,7 @@ module PWPs.PolyHeavisides
     , polyHeavisideRoot
 )
 where
-import PWPs.ConvolutionClasses
+import PWPs.PiecewiseClasses
 import PWPs.SimplePolynomials as SP
 
 {- |
