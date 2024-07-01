@@ -95,21 +95,13 @@ mulPolys :: EqNum a  => Poly a -> Poly a -> Poly a
                          + ...
     (may be an optimisation to be done by getting the shortest poly in the right place)
 -}
-mulPolys as bs = foldr addPolys zeroPoly (intermediateSums as bs)
+mulPolys as bs = sum (intermediateSums as bs)
     where
         intermediateSums :: EqNum a  => Poly a -> Poly a -> [Poly a]
         intermediateSums _ (Poly []) = error "Second polynomial was empty"
         intermediateSums (Poly []) _ = [] -- stop when we exhaust the first list
         -- as we consume the coeffecients of the first list, we shift up the second list to increase the power under consideration
         intermediateSums (Poly (x:xs)) ys =  scalePoly x ys : intermediateSums (Poly xs) (shiftPolyUp ys)
-
-integratePoly :: (Eq a, Fractional a) => Poly a -> Poly a
-{- |
-    Integrate by puting a zero constant term at the bottom and converting ax^n into ax^(n+1)/(n+1).
-    0 -> 0x is the first non-constant term, so we start at 1.
-    When integrating a zero polynomial with a zero constant we get [0,0] so need to trim
--}
-integratePoly (Poly as) = trimPoly (Poly (0:zipWith (/) as (iterate (+1) 1)))
 
 instance EqNum a  => Num (Poly a) where
     (+)               = addPolys
@@ -118,6 +110,14 @@ instance EqNum a  => Num (Poly a) where
     abs               = undefined
     signum            = undefined
     fromInteger n     = Poly [Prelude.fromInteger n]
+
+integratePoly :: (Eq a, Fractional a) => Poly a -> Poly a
+{- |
+    Integrate by puting a zero constant term at the bottom and converting ax^n into ax^(n+1)/(n+1).
+    0 -> 0x is the first non-constant term, so we start at 1.
+    When integrating a zero polynomial with a zero constant we get [0,0] so need to trim
+-}
+integratePoly (Poly as) = trimPoly (Poly (0:zipWith (/) as (iterate (+1) 1)))
 
 differentiatePoly :: EqNum a => Poly a -> Poly a
 -- | Simply use dx^n/dx = nx^(n-1)
