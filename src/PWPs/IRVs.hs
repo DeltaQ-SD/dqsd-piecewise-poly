@@ -59,6 +59,7 @@ module PWPs.IRVs
   , shiftIRV
   , Moments (..)
   , moments
+  , complexityOfIRV
 )
 where
 
@@ -378,3 +379,6 @@ moments f = Moments
                     precision = x / 10000
                     x0 = x/2 -- initial guess
                     goRoot xi = if abs (x - xi * xi) <= precision then xi else goRoot ((xi + x / xi)/2)
+
+complexityOfIRV :: (Fractional a, Ord a, Num a,  Enum a,ComplexityMeasureable a) => IRV a -> Int
+complexityOfIRV x = piecewiseComplexity (makePDF x)

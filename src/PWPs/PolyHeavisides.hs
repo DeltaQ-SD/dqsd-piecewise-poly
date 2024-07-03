@@ -159,3 +159,8 @@ displayPolyHeaviside  _ (l, u, H x _) = if l /= u then error "Non-zero heaviside
 instance OrdNumEqFrac a => Displayable a (PolyHeaviside a)
     where
         displayObject = displayPolyHeaviside
+
+instance OrdNumEqFrac a => ComplexityMeasureable (PolyHeaviside a)
+    where
+        measureComplexity (Ph (Poly a)) = if SP.degreePoly (Poly a) <= 0 then 1 else SP.degreePoly (Poly a)
+        measureComplexity (H _ _) = 1

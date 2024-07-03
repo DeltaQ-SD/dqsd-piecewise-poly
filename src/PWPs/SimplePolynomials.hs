@@ -18,6 +18,7 @@ module PWPs.SimplePolynomials
 (     Poly (..)
     , makePoly
     , zeroPoly
+    , degreePoly
     , makeMonomial
     , shiftPolyUp
     , scalePoly

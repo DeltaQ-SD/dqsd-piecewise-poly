@@ -22,6 +22,7 @@ module PWPs.PiecewiseClasses
   , Comparable (..)
   , Mergeable (..)
   , Displayable (..)
+  , ComplexityMeasureable (..)
 )
 where
 
@@ -58,6 +59,9 @@ class Mergeable a where
 
 class Displayable a b where
     displayObject :: a -> (a, a, b) -> Either (a,a) [(a, a)]
+
+class ComplexityMeasureable a where
+    measureComplexity :: a -> Int
     
 {- |
     Laws:

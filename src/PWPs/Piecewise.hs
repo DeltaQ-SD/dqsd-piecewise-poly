@@ -40,6 +40,7 @@ module PWPs.Piecewise
     , piecewiseSupport
     , applyObject
     , displayPolyDeltaIntervals
+    , piecewiseComplexity
 ) where
 
 import PWPs.PiecewiseClasses
@@ -284,3 +285,6 @@ piecewiseSupport x = (start, end)
 applyObject :: (b -> b -> b) -> b -> Pieces a b -> Pieces a b
 -- | Combine a single object with every object in a set of pieces
 applyObject f o = fmap (f o)
+
+piecewiseComplexity :: ComplexityMeasureable b => Pieces a b -> Int
+piecewiseComplexity ps = sum $ map (measureComplexity . object) $ getPieces ps
