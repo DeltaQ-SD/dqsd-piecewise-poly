@@ -40,7 +40,7 @@ module PWPs.Piecewise
     , piecewiseSupport
     , applyObject
     , displayPolyDeltaIntervals
-    , piecewiseComplexity
+    , piecewiseComplexity 
 ) where
 
 import PWPs.PiecewiseClasses
