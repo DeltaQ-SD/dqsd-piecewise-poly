@@ -87,9 +87,9 @@ instance MyConstraints a => Evaluable a (PolyDelta a)
 aggregate :: Eq a => [(a, PolyDelta a)] -> [(a, PolyDelta a)]
 aggregate []    = error "Empty list of polydeltas"
 aggregate [x]   = [x] -- need at least two elements to do anything
-aggregate ((bx, x):(by, y):xs)
-    | x == y    = aggregate $ (bx, x):xs -- throw away the second basepoint
-    | otherwise = (bx, x) : aggregate ((by, y):xs)
+aggregate ((bx, x):ys@((_, y):xs))
+    | x == y    = aggregate ((bx, x):xs) -- throw away the second basepoint
+    | otherwise = (bx, x) : aggregate ys
 
 convolvePolyDeltas :: (Num a, Fractional a, Ord a)
                    => (a, a, PolyDelta a) -> (a, a, PolyDelta a) -> [(a, PolyDelta a)]
