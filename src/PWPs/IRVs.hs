@@ -380,5 +380,5 @@ moments f = Moments
                     x0 = x/2 -- initial guess
                     goRoot xi = if abs (x - xi * xi) <= precision then xi else goRoot ((xi + x / xi)/2)
 
-complexityOfIRV :: (Fractional a, Ord a, Num a,  Enum a,ComplexityMeasureable a) => IRV a -> Int
+complexityOfIRV :: (Fractional a, Ord a, Num a,  Enum a,  Differentiable (DistH a) (DistD a), ComplexityMeasureable (PolyDelta a)) => IRV a -> Int
 complexityOfIRV x = piecewiseComplexity (makePDF x)
