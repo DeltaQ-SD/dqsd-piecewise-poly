@@ -1,4 +1,4 @@
-cabal-version:      3.0
+cabal-version:      3.8
 -- The cabal-version field refers to the version of the .cabal specification,
 -- and can be different from the cabal-install (the tool) version and the
 -- Cabal (the library) version you are using. As such, the Cabal (the library)
@@ -53,9 +53,13 @@ extra-doc-files:    CHANGELOG.md
 common warnings
     ghc-options: -Wall
 
+common language-options
+    -- Base language which the package is written in.
+    default-language: Haskell2010
+
 library
     -- Import common warning flags.
-    import:           warnings
+    import:           warnings, language-options
 
     -- Modules exported by the library.
     exposed-modules:  DeltaQ.PWPs
@@ -85,15 +89,9 @@ library
     -- Directories containing source files.
     hs-source-dirs:   src
 
-    -- Base language which the package is written in.
-    default-language: Haskell2010
-
 test-suite dqsd-piecewise-poly-test
     -- Import common warning flags.
-    import:           warnings
-
-    -- Base language which the package is written in.
-    default-language: Haskell2010
+    import:           warnings, language-options
 
     -- Modules included in this executable, other than Main.
     -- other-modules:
@@ -118,4 +116,34 @@ test-suite dqsd-piecewise-poly-test
     -- Test dependencies.
     build-depends:
         base,
-        dqsd-piecewise-poly
+        dqsd-piecewise-poly,
+
+benchmark dqsd-piecewise-poly-benchmark
+    -- Import common warning flags.
+    import:           warnings, language-options
+
+    -- Modules included in this executable, other than Main.
+    -- other-modules:
+
+    -- LANGUAGE extensions used by modules in this package.
+    other-extensions:   GeneralizedNewtypeDeriving
+                      , ScopedTypeVariables
+                      , MultiParamTypeClasses
+                      , FlexibleInstances
+                      , AllowAmbiguousTypes
+                      , TypeSynonymInstances
+
+    -- The interface type and version of the test suite.
+    type:             exitcode-stdio-1.0
+
+    -- Directories containing source files.
+    hs-source-dirs:   benchmark
+
+    -- The entrypoint to the benchmark suite.
+    main-is:          Main.hs
+
+    -- Test dependencies.
+    build-depends:
+        base,
+        dqsd-piecewise-poly,
+        criterion > 1.6
