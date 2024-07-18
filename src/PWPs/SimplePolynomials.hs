@@ -2,6 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 
 {-|
 Module      : SimplePolynomials
@@ -31,9 +32,10 @@ module PWPs.SimplePolynomials
     , shiftPoly
     , displayPoly
 ) where
-
+import GHC.Generics (Generic,Generic1)
+import Control.DeepSeq
 newtype Poly a = Poly [a]
-    deriving (Show,Functor,Foldable)
+    deriving (Show,Functor,Foldable,Generic, Generic1, NFData, NFData1)
 
 instance Eq a => Eq (Poly a)
     where

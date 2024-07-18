@@ -57,9 +57,22 @@ common language-options
     -- Base language which the package is written in.
     default-language: Haskell2010
 
+-- LANGUAGE extensions used by modules in this package.
+common default-extensions
+    default-extensions:
+                        GeneralizedNewtypeDeriving
+                      , ScopedTypeVariables
+                      , MultiParamTypeClasses
+                      , FlexibleInstances
+                      , AllowAmbiguousTypes
+                      , TypeSynonymInstances
+                      , MonoLocalBinds
+                      , DeriveGeneric
+                      , DeriveAnyClass
+
 library
     -- Import common warning flags.
-    import:           warnings, language-options
+    import:           warnings, language-options, default-extensions
 
     -- Modules exported by the library.
     exposed-modules:  DeltaQ.PWPs
@@ -73,36 +86,25 @@ library
                     , PWPs.SimplePolynomials
                     , PWPs.PiecewiseClasses
 
-    -- LANGUAGE extensions used by modules in this package.
-    other-extensions:   GeneralizedNewtypeDeriving
-                      , ScopedTypeVariables
-                      , MultiParamTypeClasses
-                      , FlexibleInstances
-                      , AllowAmbiguousTypes
-                      , TypeSynonymInstances
-                      , MonoLocalBinds
+
                       
     -- Other library packages from which modules are imported.
     build-depends:    base
                     , dqsd-classes
+                    , deepseq > 1.4
 
     -- Directories containing source files.
     hs-source-dirs:   src
 
 test-suite dqsd-piecewise-poly-test
     -- Import common warning flags.
-    import:           warnings, language-options
+    import:           warnings, language-options, default-extensions
 
     -- Modules included in this executable, other than Main.
     -- other-modules:
 
     -- LANGUAGE extensions used by modules in this package.
-    other-extensions:   GeneralizedNewtypeDeriving
-                      , ScopedTypeVariables
-                      , MultiParamTypeClasses
-                      , FlexibleInstances
-                      , AllowAmbiguousTypes
-                      , TypeSynonymInstances
+    other-extensions:   
 
     -- The interface type and version of the test suite.
     type:             exitcode-stdio-1.0
@@ -120,30 +122,34 @@ test-suite dqsd-piecewise-poly-test
 
 benchmark dqsd-piecewise-poly-benchmark
     -- Import common warning flags.
-    import:           warnings, language-options
+    import:           warnings, language-options, default-extensions
 
     -- Modules included in this executable, other than Main.
     -- other-modules:
 
     -- LANGUAGE extensions used by modules in this package.
-    other-extensions:   GeneralizedNewtypeDeriving
-                      , ScopedTypeVariables
-                      , MultiParamTypeClasses
-                      , FlexibleInstances
-                      , AllowAmbiguousTypes
-                      , TypeSynonymInstances
-
+    other-extensions:   
+    
+    -- Modules included in this library but not exported.
+    other-modules:    PWPs.Piecewise
+                    , PWPs.PolyDeltas
+                    , PWPs.PolyHeavisides
+                    , PWPs.Calculus
+                    , PWPs.SimplePolynomials
+                    , PWPs.PiecewiseClasses
+    
     -- The interface type and version of the test suite.
     type:             exitcode-stdio-1.0
 
     -- Directories containing source files.
-    hs-source-dirs:   benchmark
+    hs-source-dirs:   benchmark, src
 
     -- The entrypoint to the benchmark suite.
     main-is:          Main.hs
 
     -- Test dependencies.
     build-depends:
-        base,
-        dqsd-piecewise-poly,
-        criterion > 1.6
+         base
+       , dqsd-piecewise-poly
+       , criterion > 1.6
+       , deepseq > 1.4
