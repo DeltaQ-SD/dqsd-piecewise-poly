@@ -15,7 +15,9 @@ convPolys n = convolvePolys (0, 1, Poly [1]) (0, 1, longPoly n)
 main :: IO ()
 main = defaultMain [
   bgroup "con" [ bench "m1" $ nf mulLongPolys 1
+               , bench "m3" $ nf mulLongPolys 3
                , bench "m5" $ nf mulLongPolys 5
+               , bench "m7" $ nf mulLongPolys 7
                , bench "m9" $ nf mulLongPolys 9
                , bench "c1" $ nf convPolys 1
                , bench "c2" $ nf convPolys 2
