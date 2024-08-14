@@ -85,13 +85,12 @@ library
                     , PWPs.Calculus
                     , PWPs.SimplePolynomials
                     , PWPs.PiecewiseClasses
-
-
                       
     -- Other library packages from which modules are imported.
     build-depends:    base
                     , dqsd-classes
                     , deepseq > 1.4
+                    , exact-combinatorics > 0.2
 
     -- Directories containing source files.
     hs-source-dirs:   src
@@ -153,3 +152,5 @@ benchmark dqsd-piecewise-poly-benchmark
        , dqsd-piecewise-poly
        , criterion > 1.6
        , deepseq > 1.4
+       , exact-combinatorics > 0.2
+
