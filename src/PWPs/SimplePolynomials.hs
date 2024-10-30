@@ -2,6 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 
 {-|
 Module      : SimplePolynomials
@@ -31,9 +32,11 @@ module PWPs.SimplePolynomials
     , shiftPoly
     , displayPoly
 ) where
-
+import GHC.Generics (Generic,Generic1) -- needed to make benchmarls work
+import Control.DeepSeq
+import Math.Combinatorics.Exact.Binomial (choose)
 newtype Poly a = Poly [a]
-    deriving (Show,Functor,Foldable)
+    deriving (Show, Functor, Foldable, Generic, Generic1, NFData, NFData1)
 
 instance Eq a => Eq (Poly a)
     where
@@ -133,16 +136,6 @@ evaluatePoly :: EqNum p => p -> Poly p -> p
     and multiply and add alternately: a0 + a1x + a2x^2 + ... + anx^n = (((anx + an-1)x + an-2)x + ... + a0
 -}
 evaluatePoly point (Poly as) = foldr (\x acc -> point * acc + x) 0 as
-
-choose :: Int -> Int -> Int
-{- |
-    Binomial coefficients: simple definition is n `choose` k ~ factorial n `div` (factorial k * factorial (n-k))
-    Faster implementation available in math.combinatorics.exact.binomial
--}
-n `choose` k
-    | k <= 0     = 1
-    | k >= n     = 1
-    | otherwise = (n-1) `choose` (k - 1) + (n-1) `choose` k -- recursive definition
 
 convolvePolys :: (Fractional a, Eq a, Ord a) => (a, a, Poly a) -> (a, a, Poly a) -> [(a, Poly a)]
 -- | Take two polynomials f and g defined on bounded intervals and produce three contiguous pieces as a result
