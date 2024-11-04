@@ -104,13 +104,14 @@ convolvePolyDeltas (lf, uf, Pd f) (lg, ug, Pd g)
     | otherwise = aggregate $ map (\(x, p) -> (x, Pd p)) (convolvePolys (lf, uf, f) (lg, ug, g))
 convolvePolyDeltas (lf, uf, D f) (lg, ug, Pd g)
     | lf /= uf     = error "Non-zero delta interval"
-    | ug < lg      = error "Negative interval width"
-    -- convolving with a zero-sized delta gives nothing
-    | f == 0       = [(0, Pd zeroPoly)]
+    | ug <= lg     = error "Invalid polynomial interval width"
+    -- convolving with a zero-sized delta or a zero polynomial gives nothing
+    | f == 0 || g == zeroPoly = [(0, Pd zeroPoly)]
     -- degenerate case of delta at zero: don't shift but scale by the mass of the delta
     | lf == 0      = [(lg, scalePD f (Pd g)), (ug, Pd zeroPoly)]
-
-    | otherwise    = aggregate [(0, Pd zeroPoly), (lg + lf, scalePD f (Pd (shiftPoly lf g))), (ug + lf, Pd zeroPoly)]
+    -- translate the polynomial and the interval by the location of the delta and scale it by the delta mass
+    -- shifted poly can't be zero, so no point in aggregating
+    | otherwise    = [(0, Pd zeroPoly), (lg + lf, scalePD f (Pd (shiftPoly lf g))), (ug + lf, Pd zeroPoly)]
 convolvePolyDeltas (lf, uf, Pd f) (lg, ug, D g) = convolvePolyDeltas (lg, ug, D g) (lf, uf, Pd f)  -- commutative
 convolvePolyDeltas (lf, uf, D f) (lg, ug, D g) -- both deltas
     | lf /= uf || lg /= ug  = error "Non-zero delta interval"
