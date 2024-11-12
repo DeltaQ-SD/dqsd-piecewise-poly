@@ -26,14 +26,14 @@ module PWPs.PiecewiseClasses
 )
 where
 
-class Integrable a b where
-    integrate     :: a -> b
+class Integrable a b c where
+    integrate     :: b -> Either a c
 
-class Differentiable a b where
-    differentiate :: a -> b
+class Differentiable a b c where
+    differentiate :: (a, b) -> c
 
 class Evaluable a b where
-    evaluate :: a -> b -> [a] -- evaluate b at point a
+    evaluate :: a -> b -> a -- evaluate b at point a
     boost    :: a -> b -> b -- increment b by a
     scale    :: a -> b -> b -- scale b by a
 
