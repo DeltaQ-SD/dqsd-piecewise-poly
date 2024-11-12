@@ -70,9 +70,9 @@ scalePD :: EqNum a => a -> PolyDelta a -> PolyDelta a
 scalePD x (Pd a) = Pd (SP.scalePoly x a)
 scalePD x (D y)  = D (x * y)
 
-evaluatePD :: EqNum a => a -> PolyDelta a -> [a]
-evaluatePD point (Pd x) = [SP.evaluatePoly point x]
-evaluatePD _ (D x)      = [x]
+evaluatePD :: EqNum a => a -> PolyDelta a -> a
+evaluatePD point (Pd x) = SP.evaluatePoly point x
+evaluatePD _ (D x)      = x
 
 boostPD :: MyConstraints a => a -> PolyDelta a -> PolyDelta a
 boostPD x (Pd y) = Pd y + Pd (makePoly x)
@@ -154,3 +154,14 @@ instance OrdNumEqFrac a => ComplexityMeasureable (PolyDelta a)
     where
         measureComplexity (Pd (Poly a)) = if SP.degreePoly (Poly a) <= 0 then 1 else SP.degreePoly (Poly a)
         measureComplexity (D _) = 1
+
+instance MyConstraints a => Differentiable a (Poly a) (PolyDelta a)
+    where
+        differentiate (x,y) = if x == 0 then (Pd . differentiatePoly) y else D x
+
+integratePD :: (Eq a, Fractional a) => PolyDelta a -> Either a (Poly a)
+integratePD (Pd x) = Right (integratePoly x)
+integratePD (D x)  = Left x
+instance MyConstraints a => Integrable a (PolyDelta a) (Poly a)
+    where
+        integrate        = integratePD
