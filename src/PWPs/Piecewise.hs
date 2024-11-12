@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 {-|
 Module      : Piecewise
@@ -34,16 +35,18 @@ module PWPs.Piecewise
     , (><)
     , (<+>)
     , integratePieces
+    , differentiatePieces
     , piecesFinalValue
     , monotonic
     , comparePW
     , piecewiseSupport
     , applyObject
     , displayPolyDeltaIntervals
-    , piecewiseComplexity 
+    , piecewiseComplexity
 ) where
 
 import PWPs.PiecewiseClasses
+import GHC.Clock (getMonotonicTimeNSec)
 
 data Piece a o = Piece
     {
@@ -167,24 +170,10 @@ instance (Num a,Eq a, Ord a, Mergeable b, Num b) => Num (Pieces a b)
         signum          = undefined
         fromInteger n   = Pieces [Piece {basepoint = 0 :: a, object = fromInteger n}]
 
-instance (Num a, Eq a, Ord a, Differentiable b c, Mergeable c, Evaluable a b) => Differentiable (Pieces a b) (Pieces a c)
-    where
-        {- | Piecewise differentiation is straightforward: just differentiate all the objects
-        Since constants all differentate to zero, it is worth checking whether pieces can be merged.   
-        -}
-        differentiate   = mergePieces . fmap differentiate
-instance (Num a, Eq a, Ord a, Integrable b c, Mergeable c, Evaluable a c) => Integrable (Pieces a b) (Pieces a c)
-    where
-        integrate       = integratePieces
-{- |
-For piecewise integration we need to evaluate at the boundary points to make the pieces join up.
-We need to pass the integrated object to the next interation so that it can be evaluated on the basepoint
-and to recognise deltas and pass them through as well as evaluating them
--}
-integratePieces :: (Num a, Eq a, Ord a, Integrable b c, Evaluable a c) => Pieces a b -> Pieces a c
+integratePieces :: forall a b c. (Num a, Eq a, Ord a, Integrable a b c, Evaluable a c) => Pieces a b -> Pieces a c
 integratePieces ps = Pieces (goInt 0 (disaggregate (getPieces ps)))
     where
-        goInt :: (Num a, Eq a, Ord a, Integrable b c, Evaluable a c) => a -> [(a, a, b)] -> [Piece a c]
+        goInt :: a -> [(a, a, b)] -> [Piece a c]
         goInt _ [] = [] -- stop when the list of pieces is empty 
         {- 
            We evaluate each integrated object at the initial and final points of the interval.
@@ -193,17 +182,37 @@ integratePieces ps = Pieces (goInt 0 (disaggregate (getPieces ps)))
            We add the new object to the ouput list and pass on the received integated value plus the evaluated integral
            at the end of the interval.
         -}
-        goInt previousIntegral ((fp,lp,x):xs) = integratedPiece : goInt newIntegral xs
-            where
-                integratedObject = integrate x
-                -- evaluate always returns a non-empty list, so head and last are safe
-                basepointValue   = head $ evaluate fp integratedObject -- the integral at the start of the current interval
-                finalValue       = last $ evaluate lp integratedObject -- the integral at the end of the current interval
-                offset           = previousIntegral - basepointValue
-                integratedPiece  = makePiece (fp, boost offset integratedObject) -- correct the constant
-                newIntegral      = finalValue + offset
+        goInt previousIntegral ((fp,lp,x):xs) = case integrate x of
+            Right integratedPoly -> makePiece (fp, boost offset integratedPoly) : goInt newIntegral xs
+                where
+                    basepointValue   = evaluate fp integratedPoly -- the integral at the start of the current interval
+                    finalValue       = evaluate lp integratedPoly -- the integral at the end of the current interval
+                    offset           = previousIntegral - basepointValue
+                    newIntegral      = finalValue + offset
+            Left step          -> goInt (previousIntegral + step) xs
 
-evaluateAtApoint :: (Num a, Ord a, Evaluable a b) => a -> Pieces a b -> [a]
+{- |
+For piecewise differentiation, we can differentate each piece separately, but we must first check for discontinuities
+between the pieces, which need to be turned into additional pieces with delta functions corresponding to the size of
+the jumps.
+-}
+differentiatePieces :: forall a b c . (Num a, Eq a, Ord a, Differentiable a b c, Evaluable a b, Mergeable c) => Pieces a b -> Pieces a c
+differentiatePieces ps = mergePieces (Pieces (goDiff 0 (disaggregate (getPieces ps))))
+    where
+        goDiff :: a -> [(a, a, b)] -> [Piece a c]
+        goDiff _ [] = [] -- stop when the list of pieces is empty
+        goDiff previousValue x@((fp,lp,x0):xs) =  
+            if jump == 0 -- pieces join without a discontinuity
+                then -- simply differentiate this piece and move on
+                    makePiece (fp, differentiate (jump, x0)) : goDiff finalValue xs
+                else  -- insert extra zero-width piece containing a delta and try this piece again with the boosted value
+                    makePiece (fp, differentiate (jump, x0)) : goDiff newValue x 
+                where
+                    newValue = evaluate fp x0 -- value at the start of the interval
+                    finalValue = evaluate lp x0 -- value at the end of the interval
+                    jump = newValue - previousValue -- difference between the end of the previous interval and the start of this one
+
+evaluateAtApoint :: (Num a, Ord a, Evaluable a b) => a -> Pieces a b -> a
 {- |
 To evaluate a piecewise object at a point we need to find the interval the point is in, 
 (i.e. find i s.t. basepoint(i) <= p < basepoint(i+1)) and then evaluate the corresponding object.
@@ -212,7 +221,7 @@ or it may be before the first basepoint, in which case we evaluate the presumed 
 -}
 evaluateAtApoint point as
     | null pas                      = error "Empty piece list"
-    | point < basepoint (head pas)  = [0]
+    | point < basepoint (head pas)  = 0
     | otherwise                     = goEval point pas
     where
         pas                 = getPieces as
@@ -225,7 +234,7 @@ evaluateAtApoint point as
 -- | Find the value of the ultimate object at the last basepoint
 piecesFinalValue :: (Num a, Evaluable a b) => Pieces a b -> a
 piecesFinalValue (Pieces []) = error "Empty piece list"
-piecesFinalValue (Pieces xs) = last $ evaluate (basepoint (last xs)) (object (last xs))
+piecesFinalValue (Pieces xs) = evaluate (basepoint (last xs)) (object (last xs))
 
 instance (Num a, Eq a, Ord a, Evaluable a b) => Evaluable a (Pieces a b)
     where
