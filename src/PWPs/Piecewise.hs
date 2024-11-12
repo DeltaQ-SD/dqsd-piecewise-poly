@@ -170,7 +170,7 @@ instance (Num a,Eq a, Ord a, Mergeable b, Num b) => Num (Pieces a b)
         signum          = undefined
         fromInteger n   = Pieces [Piece {basepoint = 0 :: a, object = fromInteger n}]
 
-integratePieces :: forall a b c. (Num a, Eq a, Ord a, Integrable a b c, Evaluable a c) => Pieces a b -> Pieces a c
+integratePieces :: forall a b c. (Num a, Eq a, Ord a, StepIntegrable a b c, Evaluable a c) => Pieces a b -> Pieces a c
 integratePieces ps = Pieces (goInt 0 (disaggregate (getPieces ps)))
     where
         goInt :: a -> [(a, a, b)] -> [Piece a c]
@@ -182,7 +182,7 @@ integratePieces ps = Pieces (goInt 0 (disaggregate (getPieces ps)))
            We add the new object to the ouput list and pass on the received integated value plus the evaluated integral
            at the end of the interval.
         -}
-        goInt previousIntegral ((fp,lp,x):xs) = case integrate x of
+        goInt previousIntegral ((fp,lp,x):xs) = case integrateStep x of
             Right integratedPoly -> makePiece (fp, boost offset integratedPoly) : goInt newIntegral xs
                 where
                     basepointValue   = evaluate fp integratedPoly -- the integral at the start of the current interval
@@ -191,12 +191,16 @@ integratePieces ps = Pieces (goInt 0 (disaggregate (getPieces ps)))
                     newIntegral      = finalValue + offset
             Left step          -> goInt (previousIntegral + step) xs
 
+instance (Num a, Eq a, Ord a, StepIntegrable a b c, Mergeable c, Evaluable a c) => Integrable (Pieces a b) (Pieces a c)
+    where
+        integrate       = integratePieces
+
 {- |
 For piecewise differentiation, we can differentate each piece separately, but we must first check for discontinuities
 between the pieces, which need to be turned into additional pieces with delta functions corresponding to the size of
 the jumps.
 -}
-differentiatePieces :: forall a b c . (Num a, Eq a, Ord a, Differentiable a b c, Evaluable a b, Mergeable c) => Pieces a b -> Pieces a c
+differentiatePieces :: forall a b c . (Num a, Eq a, Ord a, StepDifferentiable a b c, Evaluable a b, Mergeable c) => Pieces a b -> Pieces a c
 differentiatePieces ps = mergePieces (Pieces (goDiff 0 (disaggregate (getPieces ps))))
     where
         goDiff :: a -> [(a, a, b)] -> [Piece a c]
@@ -204,13 +208,17 @@ differentiatePieces ps = mergePieces (Pieces (goDiff 0 (disaggregate (getPieces 
         goDiff previousValue x@((fp,lp,x0):xs) =  
             if jump == 0 -- pieces join without a discontinuity
                 then -- simply differentiate this piece and move on
-                    makePiece (fp, differentiate (jump, x0)) : goDiff finalValue xs
+                    makePiece (fp, differentiateStep (jump, x0)) : goDiff finalValue xs
                 else  -- insert extra zero-width piece containing a delta and try this piece again with the boosted value
-                    makePiece (fp, differentiate (jump, x0)) : goDiff newValue x 
+                    makePiece (fp, differentiateStep (jump, x0)) : goDiff newValue x 
                 where
                     newValue = evaluate fp x0 -- value at the start of the interval
                     finalValue = evaluate lp x0 -- value at the end of the interval
                     jump = newValue - previousValue -- difference between the end of the previous interval and the start of this one
+
+instance (Num a, Eq a, Ord a, StepDifferentiable a b c, Mergeable c, Evaluable a b) => Differentiable (Pieces a b) (Pieces a c)
+    where
+        differentiate = differentiatePieces
 
 evaluateAtApoint :: (Num a, Ord a, Evaluable a b) => a -> Pieces a b -> a
 {- |

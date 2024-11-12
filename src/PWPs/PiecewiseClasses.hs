@@ -17,6 +17,8 @@ module PWPs.PiecewiseClasses
 (
     Integrable (..)
   , Differentiable (..)
+  , StepIntegrable (..)
+  , StepDifferentiable (..)
   , Evaluable (..)
   , CompactConvolvable (..)
   , Comparable (..)
@@ -26,11 +28,16 @@ module PWPs.PiecewiseClasses
 )
 where
 
-class Integrable a b c where
-    integrate     :: b -> Either a c
+class Integrable a b where
+    integrate :: a -> b
+class StepIntegrable a b c where
+    integrateStep     :: b -> Either a c
 
-class Differentiable a b c where
-    differentiate :: (a, b) -> c
+class StepDifferentiable a b c where
+    differentiateStep :: (a, b) -> c
+
+class Differentiable a b where
+    differentiate :: a -> b
 
 class Evaluable a b where
     evaluate :: a -> b -> a -- evaluate b at point a

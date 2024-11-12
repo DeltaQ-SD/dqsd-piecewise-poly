@@ -83,19 +83,19 @@ top = PDF (makePieces [(0, D 1), (0, Pd 0)])
 bottom :: (Ord a, Num a) => IRV a
 bottom = CDF (makePieces [(0, 0)])
 
-cumulativeMass :: (Ord a, Enum a, Num a, Fractional a, Evaluable a (DistP a), Integrable a (DistD a) (DistP a)) => IRV a -> a -> a
+cumulativeMass :: (Ord a, Enum a, Num a, Fractional a, Evaluable a (DistP a), Integrable (DistD a) (DistP a)) => IRV a -> a -> a
 cumulativeMass x p = evaluate p (makeCDF x)
 
-shiftIRV :: (Fractional a, Ord a, Num a, Enum a, Eq a, Differentiable a (DistP a) (DistD a)) => a -> IRV a -> IRV a
+shiftIRV :: (Fractional a, Ord a, Num a, Enum a, Eq a, Differentiable (DistP a) (DistD a)) => a -> IRV a -> IRV a
 -- | Make a delta and convolve with it
 shiftIRV s x = constructDelta s PWPs.IRVs.<+> PDF (makePDF x)
 
-makePDF :: (Fractional a, Ord a, Num a, Enum a, Eq a, Differentiable a (DistP a) (DistD a)) => IRV a -> DistD a
+makePDF :: (Fractional a, Ord a, Num a, Enum a, Eq a, Differentiable (DistP a) (DistD a)) => IRV a -> DistD a
 -- | Force an IRV into a PDF by differentiating if necessary
 makePDF (PDF x) = x
 makePDF (CDF x) = differentiatePieces x
 
-makeCDF :: (Fractional a, Ord a, Num a, Enum a, Eq a, Integrable a (DistD a) (DistP a)) => IRV a -> DistP a
+makeCDF :: (Fractional a, Ord a, Num a, Enum a, Eq a, Integrable (DistD a) (DistP a)) => IRV a -> DistP a
 -- | Force an IRV into a CDF by integrating if necessary
 makeCDF (CDF x) = x
 -- assume PDFs are 0 at 0
@@ -195,7 +195,7 @@ constructLinearCDF xs
             segments  = (zipWith3 makeSegment probabilities basepoints slopes ++ [makePoly (last probabilities)])
             makeSegment y x s = Poly [y - x*s, s]
 
-asDiscreteCDF :: (Fractional a, Ord a, Num a, Enum a, Eq a, Integrable a (DistD a) (DistP a)) => IRV a -> Int -> [Either (a,a) [(a, a)]]
+asDiscreteCDF :: (Fractional a, Ord a, Num a, Enum a, Eq a, Integrable (DistD a) (DistP a)) => IRV a -> Int -> [Either (a,a) [(a, a)]]
 {- | Return a sequence of (Left) step base (the lower value of the Heaviside function at that point)
      or (Right) a sequence of Time and Probability. The sequence is monotonically increasing in Time.-}
 asDiscreteCDF x n = if n <= 0 then error "Invalid number of points"
@@ -204,7 +204,7 @@ asDiscreteCDF x n = if n <= 0 then error "Invalid number of points"
         width = snd (support x) - fst (support x)
         spacing = width / Prelude.fromIntegral n
 
-asDiscretePDF :: (Fractional a, Ord a, Num a, Enum a, Eq a, Differentiable a (DistP a) (DistD a)) => IRV a -> Int -> [Either (a,a) [(a, a)]]
+asDiscretePDF :: (Fractional a, Ord a, Num a, Enum a, Eq a, Differentiable (DistP a) (DistD a)) => IRV a -> Int -> [Either (a,a) [(a, a)]]
 {- | Return a sequence of (Left) Impulse Probablity mass (equivalent to the
      integral of the Heaviside function at that point) or (Right) a sequence
      of Time and Probability Density. The sequence is monotonically increasing in Time. -}
@@ -214,13 +214,13 @@ asDiscretePDF x n = if n <= 0 then error "Invalid number of points"
         width = snd (support x) - fst (support x)
         spacing = width / Prelude.fromIntegral n
 
-firstToFinish :: (Fractional a, Ord a, Num a, Enum a, Eq a, Integrable a (DistD a) (DistP a)) => IRV a -> IRV a -> IRV a
+firstToFinish :: (Fractional a, Ord a, Num a, Enum a, Eq a, Integrable (DistD a) (DistP a)) => IRV a -> IRV a -> IRV a
 firstToFinish x y = CDF (cdfOfx + cdfOfy - (cdfOfx * cdfOfy))
     where
         cdfOfx = makeCDF x
         cdfOfy = makeCDF y
 
-multiFtF :: (Fractional a, Ord a, Num a, Enum a, Eq a, Integrable a (DistD a) (DistP a)) => [IRV a] -> IRV a
+multiFtF :: (Fractional a, Ord a, Num a, Enum a, Eq a, Integrable (DistD a) (DistP a)) => [IRV a] -> IRV a
 -- | Compute the first-to-finsh of a list of IRVs by multiplying inverse CDFs then inverting
 -- If there is nothing finish the result is bottom
 multiFtF [] = bottom
@@ -231,10 +231,10 @@ multiFtF xs = CDF $ invert $ foldr (*) (head icdfs) (tail icdfs)
         invert = applyObject (-) (makePoly 1)
         icdfs = map (invert . makeCDF) xs
 
-allToFinish :: (Fractional a, Ord a, Num a, Enum a, Eq a, Integrable a (DistD a) (DistP a)) => IRV a -> IRV a -> IRV a
+allToFinish :: (Fractional a, Ord a, Num a, Enum a, Eq a, Integrable (DistD a) (DistP a)) => IRV a -> IRV a -> IRV a
 allToFinish x y = CDF (makeCDF x * makeCDF y)
 
-multiAtF :: (Fractional a, Ord a, Num a, Enum a, Eq a, Integrable a (DistD a) (DistP a)) => [IRV a] -> IRV a
+multiAtF :: (Fractional a, Ord a, Num a, Enum a, Eq a, Integrable (DistD a) (DistP a)) => [IRV a] -> IRV a
 -- | Compute the last-to-finsh of a list of IRVs: if we have nothing to wait for the result is top
 multiAtF [] = top
 multiAtF [x] = x
@@ -243,7 +243,7 @@ multiAtF xs = CDF $ foldr (*) (head cdfs) (tail cdfs)
     where
         cdfs = map makeCDF xs
 
-probChoice :: (Fractional a, Ord a, Num a, Enum a, Eq a, Differentiable a (DistP a) (DistD a)) => a -> IRV a -> IRV a -> IRV a
+probChoice :: (Fractional a, Ord a, Num a, Enum a, Eq a, Differentiable (DistP a) (DistD a)) => a -> IRV a -> IRV a -> IRV a
 {- | 
     The probability is for choosing the left branch.
     We can do this on either PDFs or CDFs; if we have CDFs deliver a CDF, 
@@ -254,7 +254,7 @@ probChoice p x y = if (p < 0) || (p > 1) then error "Invalid probability value" 
         (CDF a, CDF b) -> CDF ((p >< a) + ((1 - p) >< b))
         _              -> PDF ((p >< makePDF x) + ((1 - p) >< makePDF y))
 
-multiWeightedChoice :: (Fractional a, Ord a, Num a, Enum a, Eq a, Differentiable a (DistP a) (DistD a)) => [(a, IRV a)] -> IRV a
+multiWeightedChoice :: (Fractional a, Ord a, Num a, Enum a, Eq a, Differentiable (DistP a) (DistD a)) => [(a, IRV a)] -> IRV a
 -- If we have nothing to choose from we get nothing
 multiWeightedChoice [] = bottom
 -- we'll force everything into PDFs and deliver a PDF
@@ -266,14 +266,14 @@ multiWeightedChoice xs = PDF (sum (zipWith adjust weights pdfs))
 
 -- | To convolve, force into PDFs and then invoke piecewise convolution
 infix 7 <+> -- same as *
-(<+>) :: (Fractional a, Ord a, Num a, Enum a, Eq a, Differentiable a (DistP a) (DistD a)) => IRV a -> IRV a -> IRV a
+(<+>) :: (Fractional a, Ord a, Num a, Enum a, Eq a, Differentiable (DistP a) (DistD a)) => IRV a -> IRV a -> IRV a
 x <+> y = PDF (makePDF x PWPs.Piecewise.<+> makePDF y)
 
-probMass :: (Fractional a, Ord a, Num a, Enum a, Eq a, Integrable a (DistD a) (DistP a)) => IRV a -> a
+probMass :: (Fractional a, Ord a, Num a, Enum a, Eq a, Integrable (DistD a) (DistP a)) => IRV a -> a
 -- | Just extract the final value of the CDF
 probMass = piecesFinalValue . makeCDF
 
-compareIRVs :: (Fractional a, Ord a, Num a, Enum a, Eq a, Integrable a (DistD a) (DistP a)) => IRV a -> IRV a -> Maybe Ordering
+compareIRVs :: (Fractional a, Ord a, Num a, Enum a, Eq a, Integrable (DistD a) (DistP a)) => IRV a -> IRV a -> Maybe Ordering
 {- | 
     If the two IRVs are partially ordered, return an ordering, otherwise return Nothing.
 -}
@@ -284,7 +284,7 @@ support :: (Eq a, Fractional a) => IRV a -> (a, a)
 support (PDF x) = piecewiseSupport x
 support (CDF x) = piecewiseSupport x
 
-centiles :: (Fractional a, Ord a, Num a, Enum a, Eq a, Evaluable a (Poly a), Integrable a (DistD a) (DistP a)) => [a] -> IRV a -> [Maybe a]
+centiles :: (Fractional a, Ord a, Num a, Enum a, Eq a, Evaluable a (Poly a), Integrable (DistD a) (DistP a)) => [a] -> IRV a -> [Maybe a]
 {- | 
 Given an ordered list of probabiity values, return the time at which each value is reached; 
 if it is never reached, return Nothing in that position.
@@ -333,8 +333,8 @@ data Moments a = Moments
     }
     deriving (Eq, Show)
 moments :: 
-    forall a . (Fractional a, Ord a, Num a, Enum a, Eq a, Integrable a (DistD a) (DistP a), 
-    Differentiable a (DistP a) (DistD a),
+    forall a . (Fractional a, Ord a, Num a, Enum a, Eq a, Integrable (DistD a) (DistP a), 
+    Differentiable (DistP a) (DistD a),
     Evaluable a (DistD a), Evaluable a (DistP a)) =>
             IRV a -> Moments a
 -- | Compute the first five moments of a given distribution
@@ -380,5 +380,5 @@ moments f = Moments
                     x0 = x/2 -- initial guess
                     goRoot xi = if abs (x - xi * xi) <= precision then xi else goRoot ((xi + x / xi)/2)
 
-complexityOfIRV :: (Fractional a, Ord a, Num a,  Enum a,  Differentiable a (DistP a) (DistD a), ComplexityMeasureable (PolyDelta a)) => IRV a -> Int
+complexityOfIRV :: (Fractional a, Ord a, Num a,  Enum a,  Differentiable (DistP a) (DistD a), ComplexityMeasureable (PolyDelta a)) => IRV a -> Int
 complexityOfIRV x = piecewiseComplexity (makePDF x)
