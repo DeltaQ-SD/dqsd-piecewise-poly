@@ -195,14 +195,42 @@ constructLinearCDF xs
             segments  = (zipWith3 makeSegment probabilities basepoints slopes ++ [makePoly (last probabilities)])
             makeSegment y x s = Poly [y - x*s, s]
 
-asDiscreteCDF :: (Fractional a, Ord a, Num a, Enum a, Eq a, Integrable (DistD a) (DistP a)) => IRV a -> Int -> [Either (a,a) [(a, a)]]
-{- | Return a sequence of (Left) step base (the lower value of the Heaviside function at that point)
-     or (Right) a sequence of Time and Probability. The sequence is monotonically increasing in Time.-}
-asDiscreteCDF x n = if n <= 0 then error "Invalid number of points"
-                              else displayPolyDeltaIntervals (makeCDF x) spacing
+asDiscreteCDF :: forall a . (Fractional a, Ord a, Num a, Enum a, Eq a, Integrable (DistD a) (DistP a)) => IRV a -> Int -> [Either (a,a) [(a, a)]]
+{- | Return a sequence of (Left) (time, step base) (the lower value of the jump at that point)
+     or (Right) a sequence of (Time, Probability). The sequence is monotonically increasing in Time.-}
+asDiscreteCDF xirv n = 
+    if n <= 0 
+        then error "Invalid number of points"
+        else processRepeatedPoints (displayPolyDeltaIntervals (makeCDF xirv) spacing)
     where
-        width = snd (support x) - fst (support x)
+        width = snd (support xirv) - fst (support xirv) 
         spacing = width / Prelude.fromIntegral n
+        processRepeatedPoints :: [Either (a,a) [(a, a)]] -> [Either (a,a) [(a, a)]]
+        processRepeatedPoints [] = [] -- stop when list is empty
+        processRepeatedPoints [x] = [x] -- nothing to do when only one element left
+        processRepeatedPoints (x:xs) = 
+            let
+                y = head xs
+            in
+                case (x,y) of
+                    (Right x0, Right y0) -> -- both are just lists of points, assumed to be non-empty
+                        let 
+                            (xLastPoint, xLastValue) = last x0
+                            (yFirstPoint, yFirstValue ) = head y0
+                            xMinusLastPoint = (Right . init) x0
+                            yMinusFirstPoint = (Right . tail) y0
+                        in
+                            if xLastPoint /= yFirstPoint 
+                                then x : processRepeatedPoints xs -- no repeated point, so nothing to do
+                                else 
+                                    if xLastValue /= yFirstValue -- we have a jump, so report it as a Left
+                                    then xMinusLastPoint : (Left (xLastPoint, xLastValue)) : processRepeatedPoints xs
+                                    else if xs == [y] -- reached the end
+                                        then x : [yMinusFirstPoint]
+                                        else x : processRepeatedPoints (yMinusFirstPoint:tail xs)
+                    -- if we have Lefts, just pass them through
+                    (_ , _) -> x : processRepeatedPoints xs
+
 
 asDiscretePDF :: (Fractional a, Ord a, Num a, Enum a, Eq a, Differentiable (DistP a) (DistD a)) => IRV a -> Int -> [Either (a,a) [(a, a)]]
 {- | Return a sequence of (Left) Impulse Probablity mass (equivalent to the

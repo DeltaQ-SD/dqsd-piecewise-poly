@@ -195,14 +195,12 @@ shiftPoly s (Poly ps) = sum [b `scalePoly` binomialExpansion n s | (n,b) <- zip 
 displayPoly :: (Ord a, Eq a, Num a) => Poly a -> (a, a) -> a -> [(a, a)] 
 -- | Create a given uniform spacing s over a range (l, u) return a list of (x, y) values of poly p over that range
 -- First point will be at the base of the range, and then we increment the bottom of the interval by s
--- until it reaches the top of the interval
-displayPoly p (l, u) s
-    | s == 0 = [(l, evaluatePoly l p)]
-    | otherwise = goDisplay l
-        where
-            goDisplay x = if (x + s) >= u 
-                            then [(u, evaluatePoly u p)] -- always include the last point
-                            else (x, evaluatePoly x p) : goDisplay (x + s)
+-- until it reaches the top of the interval, always displaying the last point
+displayPoly p (l, u) s = (l, evaluatePoly l p) : goDisplay (l + s)
+    where
+        goDisplay x = 
+            if s == 0 || (x + s) >= u then [(u, evaluatePoly u p)] -- always include the last point
+            else (x, evaluatePoly x p) : goDisplay (x + s)
 
 {- |
 We use Sturm's Theorem to count the number of roots of a polynomial in a given interval.
