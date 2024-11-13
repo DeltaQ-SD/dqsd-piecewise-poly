@@ -200,7 +200,9 @@ displayPoly p (l, u) s
     | s == 0 = [(l, evaluatePoly l p)]
     | otherwise = goDisplay l
         where
-            goDisplay x = if x >= u then [] else (x, evaluatePoly x p) : goDisplay (x + s)
+            goDisplay x = if (x + s) >= u 
+                            then [(u, evaluatePoly u p)] -- always include the last point
+                            else (x, evaluatePoly x p) : goDisplay (x + s)
 
 {- |
 We use Sturm's Theorem to count the number of roots of a polynomial in a given interval.
