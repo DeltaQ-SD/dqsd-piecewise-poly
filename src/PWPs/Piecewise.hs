@@ -134,9 +134,9 @@ alignPieces x' y' = Pieces (doAlign (getPieces x') (getPieces y'))
             | null ys && null xs  -- case (3) -- terminating case
                 = [makePiece (bx0, (ox0, oy0))]
             | null ys   -- case (4)
-                = doAlign x [y0, makePiece (basepoint (head xs), zero)]
+                = doAlign x [y0, makePiece (basepoint (head xs), oy0)]
             | null xs   -- case (4')
-                = doAlign [x0, makePiece (basepoint (head ys), zero)] y
+                = doAlign [x0, makePiece (basepoint (head ys), ox0)] y
             | otherwise = -- basepoints align, next points exist
                 let
                     x1 = head xs
