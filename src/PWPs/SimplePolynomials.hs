@@ -28,13 +28,15 @@ module PWPs.SimplePolynomials
     , evaluatePoly
     , convolvePolys
     , compareToZero
-    , findPolyRoot
+    , polyRoot
     , shiftPoly
     , displayPoly
 ) where
-import GHC.Generics (Generic,Generic1) -- needed to make benchmarls work
+import GHC.Generics (Generic,Generic1) -- needed to make benchmarks work
 import Control.DeepSeq
 import Math.Combinatorics.Exact.Binomial (choose)
+import PWPs.PiecewiseClasses
+
 newtype Poly a = Poly [a]
     deriving (Show, Functor, Foldable, Generic, Generic1, NFData, NFData1)
 
@@ -193,12 +195,12 @@ shiftPoly s (Poly ps) = sum [b `scalePoly` binomialExpansion n s | (n,b) <- zip 
 displayPoly :: (Ord a, Eq a, Num a) => Poly a -> (a, a) -> a -> [(a, a)] 
 -- | Create a given uniform spacing s over a range (l, u) return a list of (x, y) values of poly p over that range
 -- First point will be at the base of the range, and then we increment the bottom of the interval by s
--- until it reaches the top of the interval
-displayPoly p (l, u) s
-    | s == 0 = [(l, evaluatePoly l p)]
-    | otherwise = goDisplay l
-        where
-            goDisplay x = if x >= u then [] else (x, evaluatePoly x p) : goDisplay (x + s)
+-- until it reaches the top of the interval, always displaying the last point
+displayPoly p (l, u) s = (l, evaluatePoly l p) : goDisplay (l + s)
+    where
+        goDisplay x = 
+            if s == 0 || (x + s) >= u then [(u, evaluatePoly u p)] -- always include the last point
+            else (x, evaluatePoly x p) : goDisplay (x + s)
 
 {- |
 We use Sturm's Theorem to count the number of roots of a polynomial in a given interval.
@@ -303,7 +305,8 @@ compareToZero (l, u, p)
 findPolyRoot :: (Fractional a, Eq a, Num a, Ord a) => a -> (a, a) -> Poly a -> Maybe a
 {-| 
 This is only called when there is known to be a root in the given interval, so we simply have to find it.
-We do this by repeatedly halving the interval in which the root must lie.
+We do this by repeatedly halving the interval in which the root must lie until its width is less than the
+specified precision.
 If degree p <=1 (poly is constant or linear) we treat these as special cases
 -}
 findPolyRoot precision (l, u) p
@@ -329,3 +332,29 @@ findPolyRoot precision (l, u) p
                     else if px * pmid < 0 then halveInterval eps x mid px pmid
                     -- otherwise choose the upper interval and continue
                     else halveInterval eps mid y pmid py
+polyRoot  :: (Ord a, Num a, Eq a, Fractional a) => a -> a -> (a, a) -> Poly a -> Maybe a
+-- otherwise we have a polynomial: subtract the value we are looking for so that we seek a zero crossing
+polyRoot  e x (l, u) p = findPolyRoot e (l, u) (p - makePoly x)
+instance (Eq a, Num a, Fractional a) => Evaluable a (Poly a)
+    where
+        evaluate  = evaluatePoly
+        boost x y = y + makePoly x
+        scale     = scalePoly
+
+instance (Fractional a, Eq a, Ord a) => Comparable a (Poly a)
+    where
+        compareObjects (lf, uf, (f,g)) = compareToZero (lf, uf, f - g)
+
+instance (Num a, Eq a, Fractional a) => Mergeable (Poly a)
+    where
+        mergeObject x y = if x == y then Just y else Nothing
+        zero = zeroPoly
+
+instance (Ord a, Num a, Eq a, Fractional a) => Displayable a (Poly a)
+    where
+        displayObject  s (l, u, p)  = 
+            if l >= u then error "Invalid polynomial interval" else Right (displayPoly p (l, u) s)
+
+instance (Ord a, Num a, Eq a, Fractional a) => ComplexityMeasureable (Poly a)
+    where
+        measureComplexity x = if degreePoly x <= 0 then 1 else degreePoly x
