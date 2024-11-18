@@ -310,10 +310,10 @@ specified precision.
 If degree p <=1 (poly is constant or linear) we treat these as special cases
 -}
 findPolyRoot precision (l, u) p
-    | precision <= 0 = error "Invalid precision value"
     | degp < 0  = Just l  -- the poly is zero, so the whole interval is a root, so return the basepoint
     | degp == 0 = Nothing -- the poly is a non-zeo constant so no root is present
     | degp == 1 = Just (-(head ps/last ps)) -- p0 + p1x = 0 => x = -p0/p1
+    | precision <= 0 = error "Invalid precision value"
     | otherwise = Just (halveInterval precision l u pl pu)
         where
             Poly ps = p
