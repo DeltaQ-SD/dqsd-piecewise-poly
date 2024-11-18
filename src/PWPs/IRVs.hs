@@ -70,6 +70,8 @@ import PWPs.Piecewise
 import PWPs.PolyDeltas
 import PWPs.SimplePolynomials (Poly (..), makePoly, makeMonomial, polyRoot)
 import PWPs.PiecewiseClasses
+--import Control.Exception (evaluate)
+--import PWPs.Piecewise (Piece(basepoint))
 
 type DistD a = Pieces a (PolyDelta a)
 type DistP a = Pieces a (Poly a)
@@ -318,8 +320,7 @@ Given an ordered list of probabiity values, return the time at which each value 
 if it is never reached, return Nothing in that position.
 Where there is a step up in the CDF that includes the centile probability, we report the time 
 for which the probability is exceeded. 
-Centiles are not computed exactly, but to a given precision, currently set to 1/1000th of the
-support of the IRV.
+Centiles are not computed exactly, but to a given precision, currently set to 1/1000th of the support of the IRV.
 -}
 centiles probabilities dQ
     | null probabilities            = error "Empty probability list"
@@ -338,17 +339,22 @@ centiles probabilities dQ
             -- unless we are beyond the tangible mass, in whioch case report Nothing
                 (if x > maxProb then Nothing else Just (basepoint final)) : findCentiles maxProb xs y
             -- hereon we must have at least two pieces, so we can ask whether the value is in the range of the current interval,
+            -- or whether it occurs in a jump between the two
             findCentiles maxProb cs@(x : xs) remaining@(first : rest@(second : _))
                 | x > maxProb = Nothing : findCentiles maxProb xs remaining
                 -- if the value is in the range of the current interval,
-                | firstValue <= x && x <= secondValue
+                | firstValue <= x && x < secondValue
                 -- find the precise root, and carry on to the next centile
                     = polyRoot eps x (basepoint first, basepoint second) (object first) : findCentiles maxProb xs remaining
-                -- otherwise no further centiles can be in this piece, so move on to the next piece
+                -- otherwise no further centiles can be in this piece, so move on to the next piece,
+                -- having first checked for a jump between the pieces
+                | secondValue <= x && x <= nextValue
+                    = Just (basepoint second) : findCentiles maxProb xs remaining
                 | otherwise = findCentiles maxProb cs rest
                 where
                     firstValue  = evaluate (basepoint first) (object first)
                     secondValue = evaluate (basepoint second) (object first)
+                    nextValue   = evaluate (basepoint second) (object second)
             findCentiles _ _ _ = error "Unexpected centile case"
 
 data Moments a = Moments
